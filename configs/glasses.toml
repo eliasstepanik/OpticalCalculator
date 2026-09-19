@@ -4,7 +4,7 @@
 # Corporation, and Hoya Corporation optical glass datasheets (standard
 # reference data, not proprietary). FPL53, FPL51, and FK61 are the key
 # ED (extra-low-dispersion) glasses used by triplet/quintuplet apo designs
-# per architecture.md section 2a (`quintuplet_apo`'s `glasses` list) and
+# per architecture.md section 2a (`quintuplet`'s `glasses` list) and
 # section 3 (secondary-spectrum correction, row 3 of the chromatic solver).
 #
 # Schema (architecture.md section 2b): one [glasses.<NAME>] table per glass,

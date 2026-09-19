@@ -23,7 +23,7 @@ use crate::error::OptError;
 #[derive(Debug, Clone, serde::Deserialize)]
 pub struct Request {
     /// Key into `designs.toml`'s `[designs.<name>]` map, e.g. `"newtonian"`,
-    /// `"rc"`, `"cassegrain"`, `"quintuplet_apo"`.
+    /// `"rc"`, `"cassegrain"`, `"quintuplet"`.
     pub design: String,
     /// Primary aperture / mirror or objective diameter, mm.
     pub aperture_mm: f64,

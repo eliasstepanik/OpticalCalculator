@@ -210,4 +210,82 @@ mod tests {
         // Sanity: catalog isn't accidentally single-entry.
         assert!(catalog.get("F2").is_ok());
     }
+
+    /// End-to-end (Chunk 15): the real `configs/designs.toml` parses into
+    /// `DesignsFile` via the actual filesystem loader, all 6 named entries
+    /// (newtonian/rc/cassegrain/achromat/triplet/quintuplet -- 5 design
+    /// types, rc+cassegrain sharing one pipeline) have the right
+    /// `pipeline`/`conic_mode`/`glasses`, and every glass name any entry
+    /// references actually exists in the real `configs/glasses.toml` (a
+    /// typo'd glass name here would otherwise only surface as a runtime
+    /// `UnknownGlass` error).
+    #[test]
+    fn load_designs_loads_real_config_end_to_end() {
+        let manifest_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
+        let designs_path = manifest_dir.join("configs/designs.toml");
+        let glasses_path = manifest_dir.join("configs/glasses.toml");
+
+        let designs = load_designs(&designs_path).expect("real designs.toml must parse");
+        let catalog = load_glasses(&glasses_path).expect("real glasses.toml must parse");
+
+        assert_eq!(designs.designs.len(), 6, "expected 6 named design entries");
+        for name in ["newtonian", "rc", "cassegrain", "achromat", "triplet", "quintuplet"] {
+            assert!(designs.designs.contains_key(name), "missing design entry: {name}");
+        }
+
+        let newt = &designs.designs["newtonian"];
+        assert_eq!(newt.pipeline, "newtonian");
+        assert_eq!(newt.conic.as_ref().expect("newtonian has conic").primary, -1.0);
+
+        let rc = &designs.designs["rc"];
+        assert_eq!(rc.pipeline, "cassegrain");
+        assert_eq!(rc.conic_mode.as_deref(), Some("rc"));
+
+        let cass = &designs.designs["cassegrain"];
+        assert_eq!(cass.pipeline, "cassegrain");
+        assert_eq!(cass.conic_mode.as_deref(), Some("classical"));
+
+        let achromat = &designs.designs["achromat"];
+        assert_eq!(achromat.pipeline, "refractor");
+        assert_eq!(achromat.glasses.as_deref(), Some(&["BK7".to_string(), "F2".to_string()][..]));
+        assert_eq!(achromat.elements, achromat.glasses.as_ref().unwrap().len());
+
+        let triplet = &designs.designs["triplet"];
+        assert_eq!(triplet.pipeline, "refractor");
+        assert_eq!(
+            triplet.glasses.as_deref(),
+            Some(&["FPL53".to_string(), "BK7".to_string(), "F2".to_string()][..])
+        );
+        assert_eq!(triplet.elements, triplet.glasses.as_ref().unwrap().len());
+
+        let quint = &designs.designs["quintuplet"];
+        assert_eq!(quint.pipeline, "refractor");
+        assert_eq!(
+            quint.glasses.as_deref(),
+            Some(
+                &[
+                    "FPL53".to_string(),
+                    "FPL53".to_string(),
+                    "BK7".to_string(),
+                    "F2".to_string(),
+                    "BK7".to_string(),
+                ][..]
+            )
+        );
+        assert_eq!(quint.elements, quint.glasses.as_ref().unwrap().len());
+
+        // Cross-check: every glass name any design references must exist in
+        // the real glass catalog -- catches a typo'd name that would
+        // otherwise only surface as a runtime UnknownGlass error.
+        for (design_name, def) in &designs.designs {
+            if let Some(glasses) = &def.glasses {
+                for glass_name in glasses {
+                    assert!(
+                        catalog.get(glass_name).is_ok(),
+                        "design '{design_name}' references unknown glass '{glass_name}'"
+                    );
+                }
+            }
+        }
+    }
 }
