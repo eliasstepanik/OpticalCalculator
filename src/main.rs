@@ -9,6 +9,7 @@ mod error;
 mod glass;
 mod output;
 mod refractor_chromatic;
+mod refractor_chromatic_solve;
 mod request;
 
 fn main() {}
