@@ -30,23 +30,40 @@ pub struct FovSpec {
     pub sensor_fov_arcmin: Option<f64>,
 }
 
-/// Newtonian secondary (diagonal) mirror sizing + illumination
-/// (`designs/newtonian.rs`, Chunk 11).
+/// Newtonian secondary (diagonal) mirror sizing + obstruction, plus the
+/// primary mirror's conic constant (`designs/newtonian.rs`, Chunk 11,
+/// formula-validation.md A1). `primary_conic` lives here rather than as a
+/// new top-level `SpecSheet` field (Chunk 8 retrospect Gap #1) specifically
+/// to avoid forcing every other `SpecSheet` constructor (e.g.
+/// `designs/cassegrain.rs`, a parallel in-flight chunk) to add a field it
+/// has no use for — Newtonian is the only pipeline with a fixed conic
+/// override today (architecture.md §2a); RC/classical Cassegrain already
+/// carry their own conics on `CassegrainSpec`.
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct NewtonianSecondarySpec {
     pub minor_axis_mm: f64,
     pub offset_mm: f64,
-    pub illumination_pct: f64,
+    pub obstruction_linear_pct: f64,
+    pub obstruction_areal_pct: f64,
+    pub primary_conic: f64,
 }
 
 /// RC/classical Cassegrain conics, back-focus, secondary magnification
-/// (`designs/cassegrain.rs`, Chunk 12).
+/// (`designs/cassegrain.rs`, Chunk 12). Radii/separation added in Chunk 12
+/// alongside the real formulas (Schroeder *Astronomical Optics* 2nd ed.
+/// §6.2) — the sheet needs the physical geometry, not just the conics.
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct CassegrainSpec {
     pub k1_primary_conic: f64,
     pub k2_secondary_conic: f64,
     pub back_focus_mm: f64,
     pub secondary_magnification: f64,
+    /// Primary-to-secondary mirror separation, mm (Schroeder `d`).
+    pub mirror_separation_mm: f64,
+    /// Primary mirror radius of curvature, mm (concave, `R1 = 2·f1`).
+    pub r1_mm: f64,
+    /// Secondary mirror radius of curvature, mm (convex).
+    pub r2_mm: f64,
 }
 
 /// One refractor element's prescription: glass, radii, power
