@@ -35,6 +35,14 @@ pub enum OptError {
     #[error("design '{design}' requires field '{field}'")]
     MissingField { design: String, field: String },
 
+    /// A field IS present but fails basic physical sanity (negative, zero
+    /// where positive is required, NaN, infinite, or a geometry that is
+    /// physically impossible for the design) — `Request::validate` for
+    /// simple per-field bounds, or a design pipeline (e.g.
+    /// `designs/newtonian.rs`'s `L < D/2` check) for cross-field geometry.
+    #[error("{field} is invalid: {reason}")]
+    InvalidValue { field: String, reason: String },
+
     /// A glass name referenced by a design or request is not in the catalog.
     #[error("glass '{0}' not found in catalog")]
     UnknownGlass(String),

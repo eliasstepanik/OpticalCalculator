@@ -18,8 +18,10 @@
 //!
 //! formula-validation.md F7: `L < D/2` is physically impossible (the light
 //! path alone needs more clearance than the primary's radius to exit the
-//! tube) — this pipeline rejects it via `OptError::Unsolvable` rather than
-//! silently emitting a nonsensical secondary size.
+//! tube) — this pipeline rejects it via `OptError::InvalidValue` (a mirror-
+//! geometry problem, not a chromatic-solver problem — `Unsolvable` is
+//! reserved for the refractor chromatic solver's singular-matrix case)
+//! rather than silently emitting a nonsensical secondary size.
 
 use crate::common;
 use crate::config::DesignDef;
@@ -117,14 +119,20 @@ fn compute_secondary(
 
     // formula-validation.md F7: L < D/2 is physically impossible — the light
     // path alone needs more clearance than the primary's radius to exit the
-    // tube (request.rs documents this on `focuser_backfocus_mm`).
+    // tube (request.rs documents this on `focuser_backfocus_mm`). This is a
+    // mirror-geometry problem, not a chromatic-solver problem, so it uses
+    // `InvalidValue` rather than `Unsolvable` (which would misleadingly talk
+    // about "chromatic system" / "lower-dispersion element").
     if l < aperture_mm / 2.0 {
-        return Err(OptError::Unsolvable(vec![format!(
-            "focuser_backfocus_mm (L={l:.2}mm) is less than aperture_mm/2 \
-             ({half:.2}mm) — physically impossible; L must be the FULL \
-             secondary-center-to-focal-plane distance, not drawtube-only travel",
-            half = aperture_mm / 2.0
-        )]));
+        let half = aperture_mm / 2.0;
+        return Err(OptError::InvalidValue {
+            field: "focuser_backfocus_mm".to_string(),
+            reason: format!(
+                "focuser_backfocus_mm ({l:.2}) is less than aperture_mm/2 ({half:.2}) \
+                 — physically impossible secondary geometry; L must be the FULL \
+                 secondary-center-to-focal-plane distance, not drawtube-only travel"
+            ),
+        });
     }
 
     let minor_axis_mm = i + l * (aperture_mm - i) / focal_length_mm;
@@ -224,11 +232,15 @@ mod tests {
 
         let err = Newtonian.compute(&req, &def, &catalog).expect_err("must reject L < D/2");
         match err {
-            OptError::Unsolvable(msgs) => {
-                assert_eq!(msgs.len(), 1);
-                assert!(msgs[0].contains("physically impossible"), "msg = {}", msgs[0]);
+            OptError::InvalidValue { field, reason } => {
+                assert_eq!(field, "focuser_backfocus_mm");
+                assert!(reason.contains("physically impossible"), "reason = {reason}");
+                assert!(
+                    !reason.to_lowercase().contains("chromatic") && !reason.to_lowercase().contains("dispersion"),
+                    "reason must not mention chromatic solver terms, got: {reason}"
+                );
             }
-            other => panic!("expected Unsolvable, got {other:?}"),
+            other => panic!("expected InvalidValue, got {other:?}"),
         }
     }
 

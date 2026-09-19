@@ -103,7 +103,7 @@ impl Request {
                 });
             }
         }
-        Ok(())
+        crate::request_validate::validate_values(self)
     }
 
     /// Whether `field` (a `DesignDef.required`/`optional` entry name) has a
