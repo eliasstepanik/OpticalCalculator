@@ -1,0 +1,95 @@
+# Design-type definitions for OpticalCalculator, per architecture.md section 2a
+# and notes/optical-calculator-designdef-schema-chunk5.md (the exact DesignDef
+# field shape src/config.rs, Chunk 5, deserializes this into). 6 named design
+# entries covering the 5 launch design types: newtonian, rc, cassegrain
+# (rc + cassegrain share the "cassegrain" pipeline, differing only via
+# conic_mode), achromat, triplet, quintuplet.
+#
+# Field-name ground truth for `required`/`optional` is src/request.rs's
+# `Request` struct (the only names `Request::has_field` recognizes):
+# aperture_mm, f_ratio, focuser_backfocus_mm, field_diam_mm, primary_f_ratio,
+# backfocus_mm, eyepiece_fieldstop_mm, sensor_diag_mm, wavelength_nm,
+# output_path. `required` is validated by `Request::validate`; an unrecognized
+# name always counts as missing (fail-safe).
+#
+# Glass names in `glasses` lists are cross-checked against configs/glasses.toml
+# (Chunk 4) -- BK7, F2, FPL53 all present there.
+
+[designs.newtonian]
+pipeline = "newtonian"
+elements = 2
+kind     = "reflector"
+required = ["aperture_mm", "f_ratio", "focuser_backfocus_mm", "field_diam_mm"]
+optional = ["sensor_diag_mm", "eyepiece_fieldstop_mm", "wavelength_nm"]
+outputs  = ["basics", "newt_secondary", "illumination", "diffraction", "plate_scale", "fov", "conic"]
+[designs.newtonian.conic]
+primary = -1.0   # parabola (architecture.md section 2a)
+
+# RC and classical Cassegrain share pipeline = "cassegrain"; src/designs/mod.rs
+# dispatches both to the same Cassegrain pipeline type, which reads
+# `conic_mode` to pick the RC vs. classical conic formulas
+# (src/designs/cassegrain.rs). Both require primary_f_ratio + backfocus_mm
+# per formula-validation.md finding F2 (the resolved blocker: architecture.md
+# section 2c never listed these, but the Cassegrain pipeline needs them to
+# recover f1 and the secondary magnification).
+
+[designs.rc]
+pipeline   = "cassegrain"
+elements   = 2
+kind       = "reflector"
+required   = ["aperture_mm", "f_ratio", "primary_f_ratio", "backfocus_mm"]
+optional   = ["sensor_diag_mm", "eyepiece_fieldstop_mm", "wavelength_nm"]
+outputs    = ["basics", "diffraction", "plate_scale", "fov", "cassegrain"]
+conic_mode = "rc"
+
+[designs.cassegrain]
+pipeline   = "cassegrain"
+elements   = 2
+kind       = "reflector"
+required   = ["aperture_mm", "f_ratio", "primary_f_ratio", "backfocus_mm"]
+optional   = ["sensor_diag_mm", "eyepiece_fieldstop_mm", "wavelength_nm"]
+outputs    = ["basics", "diffraction", "plate_scale", "fov", "cassegrain"]
+conic_mode = "classical"
+
+# Refractors (achromat/triplet/quintuplet) all share pipeline = "refractor"
+# (src/designs/refractor.rs's single N-element solver, architecture.md
+# section 3 "one solver, not three paths"). `elements` matches `glasses.len()`
+# in every entry below.
+
+[designs.achromat]
+pipeline = "refractor"
+elements = 2
+kind     = "refractor"
+required = ["aperture_mm", "f_ratio"]
+optional = ["sensor_diag_mm", "eyepiece_fieldstop_mm", "wavelength_nm"]
+outputs  = ["basics", "diffraction", "plate_scale", "fov", "prescription"]
+glasses  = ["BK7", "F2"]   # classic crown+flint doublet achromat
+
+[designs.triplet]
+pipeline = "refractor"
+elements = 3
+kind     = "refractor"
+required = ["aperture_mm", "f_ratio"]
+optional = ["sensor_diag_mm", "eyepiece_fieldstop_mm", "wavelength_nm"]
+outputs  = ["basics", "diffraction", "plate_scale", "fov", "prescription"]
+glasses  = ["FPL53", "BK7", "F2"]   # ED-glass apo triplet
+
+# Quintuplet: 5 elements, 3 physical constraint rows (total power,
+# achromatism, secondary spectrum) -> 2 free DOF. `power_split` is
+# deliberately omitted here: formula-validation.md A3 rule 1 ("equal power
+# within identical-glass groups") states this convention is "absent by
+# default" and the shipped duplicate-glass list below
+# ([FPL53, FPL53, BK7, F2, BK7]) already consumes both DOF via the
+# duplicate-glass equal-power rows src/refractor_chromatic_solve.rs derives
+# automatically (see its `quintuplet_duplicate_glass_rows_force_equal_power`
+# test) -- no explicit power_split needed. This is the exact glass combo
+# already unit-tested in refractor_chromatic_solve.rs and refractor.rs.
+
+[designs.quintuplet]
+pipeline = "refractor"
+elements = 5
+kind     = "refractor"
+required = ["aperture_mm", "f_ratio"]
+optional = ["sensor_diag_mm", "eyepiece_fieldstop_mm", "wavelength_nm"]
+outputs  = ["basics", "diffraction", "plate_scale", "fov", "prescription"]
+glasses  = ["FPL53", "FPL53", "BK7", "F2", "BK7"]

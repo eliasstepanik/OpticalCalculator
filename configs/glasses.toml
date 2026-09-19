@@ -1,0 +1,130 @@
+# Optical glass catalog for OpticalCalculator.
+#
+# nd/vd/pgf figures are drawn from publicly available Schott AG, Ohara
+# Corporation, and Hoya Corporation optical glass datasheets (standard
+# reference data, not proprietary). FPL53, FPL51, and FK61 are the key
+# ED (extra-low-dispersion) glasses used by triplet/quintuplet apo designs
+# per architecture.md section 2a (`quintuplet`'s `glasses` list) and
+# section 3 (secondary-spectrum correction, row 3 of the chromatic solver).
+#
+# Schema (architecture.md section 2b): one [glasses.<NAME>] table per glass,
+# keyed by the glass name used in designs.toml's `glasses = [...]` lists.
+# The table does NOT repeat `name` as a field -- config.rs's loader
+# (Chunk 5, not yet built) reads the TOML key as `Glass.name` when
+# constructing the `Vec<Glass>` / `GlassCatalog`. Coordinated wrapper shape
+# for Chunk 5 (documented in the Chunk 4 build report):
+#
+#   #[derive(serde::Deserialize)]
+#   struct GlassEntry { nd: f64, vd: f64, pgf: f64 }
+#   #[derive(serde::Deserialize)]
+#   struct GlassesFile { glasses: std::collections::HashMap<String, GlassEntry> }
+#
+#   // then: glasses.into_iter().map(|(name, e)| Glass { name, nd: e.nd,
+#   //       vd: e.vd, pgf: e.pgf }).collect::<Vec<Glass>>()
+#
+# pgf (P_g,F, partial dispersion) sourcing: each entry below notes whether
+# the value is an exact catalog datasheet figure or the normal-line
+# approximation P_g,F ~= 0.6438 - 0.001682 x Vd (used where an exact
+# datasheet figure was not confidently available -- these are flagged
+# "normal-line approx"). Sanity range per formula-validation.md finding F6:
+# 0.50 < pgf < 0.63, 20 < vd < 100 -- every entry below satisfies this.
+
+# --- Standard crown/flint achromat pair -----------------------------------
+
+[glasses.BK7]  # Schott N-BK7 -- exact datasheet value
+nd = 1.51680
+vd = 64.17
+pgf = 0.5349
+
+[glasses.F2]  # Schott N-F2 -- normal-line approximation (Schott published exact value is very close)
+nd = 1.62004
+vd = 36.37
+pgf = 0.5828
+
+# --- ED / low-dispersion glasses for apo designs ---------------------------
+
+[glasses.FPL53]  # Ohara S-FPL53 (fluorite-like ED) -- exact datasheet value per architecture.md
+nd = 1.43875
+vd = 94.66
+pgf = 0.5340
+
+[glasses.FPL51]  # Ohara S-FPL51 (ED) -- exact datasheet value
+nd = 1.49700
+vd = 81.54
+pgf = 0.5385
+
+[glasses.FK61]  # Schott N-FK61 (low-dispersion crown) -- normal-line approx (exact datasheet pgf not confidently sourced)
+nd = 1.50001
+vd = 81.61
+pgf = 0.5065
+
+[glasses.FCD100]  # Hoya FCD100 (ED, FPL53-class) -- published Hoya datasheet value (approx, standard reference)
+nd = 1.43700
+vd = 95.10
+pgf = 0.5343
+
+# --- Additional crowns ------------------------------------------------------
+
+[glasses.BAK4]  # Schott N-BAK4 -- exact datasheet value
+nd = 1.56883
+vd = 55.98
+pgf = 0.5442
+
+[glasses.K5]  # Schott N-K5 -- exact datasheet value
+nd = 1.52249
+vd = 59.48
+pgf = 0.5423
+
+[glasses.SK5]  # Schott N-SK5 -- normal-line approximation
+nd = 1.58913
+vd = 61.15
+pgf = 0.5410
+
+[glasses.SK16]  # Schott N-SK16 -- normal-line approx (exact datasheet pgf not confidently sourced)
+nd = 1.62041
+vd = 60.32
+pgf = 0.5423
+
+# --- Additional flints -------------------------------------------------------
+
+[glasses.SF2]  # Schott N-SF2 -- exact datasheet value
+nd = 1.64769
+vd = 33.85
+pgf = 0.5926
+
+[glasses.SF5]  # Schott N-SF5 -- exact datasheet value
+nd = 1.67271
+vd = 32.25
+pgf = 0.5988
+
+[glasses.F5]  # Schott N-F5 -- exact datasheet value
+nd = 1.60342
+vd = 38.03
+pgf = 0.5804
+
+[glasses.SF10]  # Schott N-SF10 -- published Schott datasheet value (approx, standard reference)
+nd = 1.72825
+vd = 28.41
+pgf = 0.6081
+
+[glasses.LAK9]  # Schott N-LAK9 -- exact datasheet value
+nd = 1.69100
+vd = 54.71
+pgf = 0.5470
+
+# --- Additional common ATM glasses ------------------------------------------
+
+[glasses.LLF1]  # Schott N-LLF1 -- normal-line approx (exact datasheet pgf not confidently sourced)
+nd = 1.54814
+vd = 45.75
+pgf = 0.5668
+
+[glasses.SSK4]  # Schott N-SSK4 -- normal-line approx (exact datasheet pgf not confidently sourced)
+nd = 1.61765
+vd = 55.11
+pgf = 0.5511
+
+[glasses.BALF4]  # Schott N-BALF4 -- normal-line approx (exact datasheet pgf not confidently sourced)
+nd = 1.57956
+vd = 53.87
+pgf = 0.5532

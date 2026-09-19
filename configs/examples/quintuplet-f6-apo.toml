@@ -1,0 +1,15 @@
+# Example user request: F6 quintuplet apo refractor, 130mm aperture (a
+# common amateur APO refractor size) -> 130.0 * 6.0 = 780mm focal length.
+# Required fields per configs/designs.toml's [designs.quintuplet].required:
+# aperture_mm, f_ratio only -- the ordered glass list (FPL53/FPL53/BK7/F2/
+# BK7) comes from the design definition itself, not the user request.
+
+design = "quintuplet"
+aperture_mm = 130.0
+f_ratio = 6.0
+
+# Optional fields below -- included to demonstrate the imaging FOV/plate-
+# scale output section.
+sensor_diag_mm = 43.3          # medium-format-ish sensor diagonal, mm
+eyepiece_fieldstop_mm = 27.0   # e.g. a 2" 30mm eyepiece's field-stop diameter
+wavelength_nm = 550.0          # visual green (this is also the ATM default)

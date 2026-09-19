@@ -1,0 +1,24 @@
+# Example user request: F8 Ritchey-Chretien, 200mm (8") aperture, f/3
+# primary -> system focal length 200.0 * 8.0 = 1600mm; secondary
+# magnification m = f_ratio / primary_f_ratio = 8/3. Required fields per
+# configs/designs.toml's [designs.rc].required: aperture_mm, f_ratio,
+# primary_f_ratio, backfocus_mm.
+
+design = "rc"
+aperture_mm = 200.0
+f_ratio = 8.0
+
+# primary_f_ratio: the PRIMARY MIRROR's own focal ratio (f1/D), distinct
+# from the system f_ratio above. f/3 is a common RC primary choice.
+primary_f_ratio = 3.0
+
+# backfocus_mm: measured from the PRIMARY MIRROR VERTEX to the focal plane
+# (Schroeder section 6.2 convention b), NOT from the secondary or the tube's
+# rear cell. 150mm is a realistic RC backfocus (matches the worked example
+# in src/designs/cassegrain.rs).
+backfocus_mm = 150.0
+
+# Optional fields below -- included to demonstrate the FOV output section.
+sensor_diag_mm = 28.4          # full-frame sensor diagonal (36x24mm), mm
+eyepiece_fieldstop_mm = 27.0   # e.g. a 2" 30mm eyepiece's field-stop diameter
+wavelength_nm = 550.0          # visual green (this is also the ATM default)
