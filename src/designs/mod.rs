@@ -10,6 +10,7 @@
 mod cassegrain;
 mod newtonian;
 mod refractor;
+mod refractor_shape;
 
 pub use cassegrain::Cassegrain;
 pub use newtonian::Newtonian;

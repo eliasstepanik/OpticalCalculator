@@ -157,7 +157,7 @@ mod tests {
         // formula-validation.md "Chunk 10 (solve_powers) — load-bearing
         // doublet reference": BK7 (Vd 64.17) / F2 (Vd 36.37), f = 1000mm.
         let bk7 = glass("BK7", 64.17, 0.5349);
-        let f2 = glass("F2", 36.37, 0.5834);
+        let f2 = glass("F2", 36.37, 0.5828);
         let glasses = [&bk7, &f2];
 
         let phi = solve_powers(1000.0, &glasses, None).expect("doublet must solve");
@@ -179,7 +179,7 @@ mod tests {
         // once row 3 is part of the solved system for ANY glass combo).
         let fpl53 = glass("FPL53", 94.66, 0.5340);
         let bk7 = glass("BK7", 64.17, 0.5349);
-        let f2 = glass("F2", 36.37, 0.5834);
+        let f2 = glass("F2", 36.37, 0.5828);
         let ed_glasses = [&fpl53, &bk7, &f2];
 
         let ed_phi = solve_powers(1000.0, &ed_glasses, None).expect("ED triplet must solve");
@@ -244,7 +244,7 @@ mod tests {
         let fpl53_a = glass("FPL53", 94.66, 0.5340);
         let fpl53_b = glass("FPL53", 94.66, 0.5340);
         let bk7_a = glass("BK7", 64.17, 0.5349);
-        let f2 = glass("F2", 36.37, 0.5834);
+        let f2 = glass("F2", 36.37, 0.5828);
         let bk7_b = glass("BK7", 64.17, 0.5349);
         let glasses = [&fpl53_a, &fpl53_b, &bk7_a, &f2, &bk7_b];
 

@@ -63,7 +63,7 @@ mod tests {
                 name: "F2".to_string(),
                 nd: 1.62004,
                 vd: 36.37,
-                pgf: 0.5834,
+                pgf: 0.5828,
             },
             Glass {
                 name: "FPL53".to_string(),
@@ -81,7 +81,7 @@ mod tests {
         assert_eq!(g.name, "F2");
         assert!((g.nd - 1.62004).abs() < 1e-9);
         assert!((g.vd - 36.37).abs() < 1e-9);
-        assert!((g.pgf - 0.5834).abs() < 1e-9);
+        assert!((g.pgf - 0.5828).abs() < 1e-9);
     }
 
     #[test]
