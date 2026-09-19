@@ -1,7 +1,11 @@
-//! `SpecSheet` output model + renderers (stdout table, JSON/TOML export).
+//! `SpecSheet` output data model (Chunk 8).
 //!
-//! `SpecSheet` struct lands in Chunk 8 (this chunk); `render_table`/
-//! `export_json`/`export_toml` land in Chunk 14 per architecture.md §4.
+//! Renderers (`render_table`/`export_json`/`export_toml`/
+//! `write_output_file`, Chunk 14 per architecture.md §4) live in
+//! [`crate::render`] — kept in a separate module because this file plus the
+//! rendering logic would exceed the 300-line source limit
+//! ([[constraints]]/AGENTS.md); the struct-vs-behavior split keeps each file
+//! cohesive on its own (data shape here, presentation logic there).
 //!
 //! Every pipeline (`designs::newtonian`/`cassegrain`/`refractor`) produces
 //! one `SpecSheet`, but only populates the sections its `DesignDef.outputs`
@@ -13,7 +17,7 @@
 
 /// Diffraction-limited performance: Dawes limit, Airy disk, useful
 /// magnification range (`common.rs`, architecture.md §7).
-#[derive(Debug, Clone, serde::Serialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct DiffractionSpec {
     pub dawes_limit_arcsec: f64,
     pub airy_disk_diameter_um: f64,
@@ -23,7 +27,7 @@ pub struct DiffractionSpec {
 
 /// Field of view: plate scale and true FOV from an eyepiece field stop
 /// and/or imaging sensor diagonal (`common.rs`, architecture.md §7).
-#[derive(Debug, Clone, serde::Serialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct FovSpec {
     pub plate_scale_arcsec_per_mm: f64,
     pub true_fov_arcmin: Option<f64>,
@@ -39,7 +43,7 @@ pub struct FovSpec {
 /// has no use for — Newtonian is the only pipeline with a fixed conic
 /// override today (architecture.md §2a); RC/classical Cassegrain already
 /// carry their own conics on `CassegrainSpec`.
-#[derive(Debug, Clone, serde::Serialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct NewtonianSecondarySpec {
     pub minor_axis_mm: f64,
     pub offset_mm: f64,
@@ -52,7 +56,7 @@ pub struct NewtonianSecondarySpec {
 /// (`designs/cassegrain.rs`, Chunk 12). Radii/separation added in Chunk 12
 /// alongside the real formulas (Schroeder *Astronomical Optics* 2nd ed.
 /// §6.2) — the sheet needs the physical geometry, not just the conics.
-#[derive(Debug, Clone, serde::Serialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct CassegrainSpec {
     pub k1_primary_conic: f64,
     pub k2_secondary_conic: f64,
@@ -68,7 +72,7 @@ pub struct CassegrainSpec {
 
 /// One refractor element's prescription: glass, radii, power
 /// (`designs/refractor.rs` + `refractor_chromatic.rs`, Chunks 9/10/13).
-#[derive(Debug, Clone, serde::Serialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct RefractorElementSpec {
     pub glass_name: String,
     pub power_mm_inv: f64,
@@ -78,7 +82,7 @@ pub struct RefractorElementSpec {
 
 /// Full N-element chromatic prescription — one entry per element, ordered
 /// to match `DesignDef.glasses` (architecture.md §2a/§3).
-#[derive(Debug, Clone, serde::Serialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct RefractorPrescriptionSpec {
     pub elements: Vec<RefractorElementSpec>,
 }
@@ -88,7 +92,7 @@ pub struct RefractorPrescriptionSpec {
 /// the universal basics are `Option`/`Vec` since no single design populates
 /// every section — a Newtonian sheet has `newtonian_secondary` but no
 /// `refractor_prescription`, and vice versa (architecture.md §4).
-#[derive(Debug, Clone, serde::Serialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct SpecSheet {
     /// Design id from the request (`Request::design`), e.g. `"newtonian"`.
     pub design_name: String,
