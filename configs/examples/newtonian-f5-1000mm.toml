@@ -1,0 +1,24 @@
+# Example user request (architecture.md §2c): F5, 200mm (8") Newtonian
+# reflector -> aperture_mm * f_ratio = 200.0 * 5.0 = 1000mm focal length.
+# Required fields per configs/designs.toml's [designs.newtonian].required:
+# aperture_mm, f_ratio, focuser_backfocus_mm, field_diam_mm.
+
+design = "newtonian"
+aperture_mm = 200.0
+f_ratio = 5.0
+
+# focuser_backfocus_mm (L, src/request.rs): the FULL secondary-center-to-
+# focal-plane distance -- tube radius + wall thickness + focuser stack +
+# desired in-travel, NOT drawtube-only travel. Must be >= aperture_mm/2
+# (100.0mm here) or designs/newtonian.rs rejects it as physically
+# impossible; 210mm is a realistic value for an 8" f/5 Newtonian.
+focuser_backfocus_mm = 210.0
+
+# field_diam_mm: fully-illuminated field diameter, mm, driving secondary
+# sizing and illumination falloff.
+field_diam_mm = 24.0
+
+# Optional fields below -- included to demonstrate the FOV output section.
+eyepiece_fieldstop_mm = 27.0   # e.g. a 2" 30mm eyepiece's field-stop diameter
+sensor_diag_mm = 28.4          # full-frame sensor diagonal (36x24mm), mm
+wavelength_nm = 550.0          # visual green (this is also the ATM default)

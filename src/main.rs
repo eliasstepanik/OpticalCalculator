@@ -5,6 +5,8 @@
 mod common;
 mod config;
 mod designs;
+#[cfg(test)]
+mod examples_validate;
 mod error;
 mod glass;
 mod output;
