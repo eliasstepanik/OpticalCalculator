@@ -6,6 +6,7 @@
 //! `anyhow::Context` for a readable stderr message and non-zero exit; the
 //! library layer below never panics on user input (architecture.md §5).
 
+mod coating;
 mod common;
 mod config;
 mod designs;
@@ -20,6 +21,7 @@ mod refractor_chromatic_solve;
 mod render;
 mod request;
 mod request_validate;
+mod substrate;
 
 use std::path::PathBuf;
 

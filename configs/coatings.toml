@@ -1,0 +1,32 @@
+# Mirror coating catalog for OpticalCalculator v2 (#8, --fabrication).
+#
+# Representative visual-band (~550 nm) reflectivity per single reflection,
+# used by fabrication::throughput's system_throughput_pct =
+# (reflectivity_pct / 100) ^ n_mirrors (v2-coatings-throughput.md). One
+# figure per coating (kept simple per the brief -- no per-wavelength curve
+# in v2). Sanity bound per v2-coatings-throughput.md: 70.0 <= reflectivity_pct
+# <= 99.9.
+#
+# Schema (v2-coatings-throughput.md, mirrors glasses.toml's shape): one
+# [coatings.<name>] table per coating, keyed by the name used in a request's
+# `coating` field. The table does NOT repeat `name` as a field -- the
+# `CoatingEntry`/`CoatingsFile` loader reads the TOML key as `Coating.name`
+# when constructing the `Vec<Coating>` / `CoatingCatalog` (same pattern as
+# glasses.toml -> GlassCatalog).
+#
+# Sources: figures are well-known published typical visual-band reflectivity
+# values used in amateur/commercial telescope mirror coating specs (e.g.
+# Thorlabs/Edmund Optics mirror coating datasheets, Suiter's "Star Testing
+# Astronomical Telescopes" coating discussion, and standard ATM references).
+
+[coatings.bare_aluminum]  # fresh unprotected/uncoated aluminum -- typical visual reflectivity ~87-92%; conservative figure used
+reflectivity_pct = 88.0
+
+[coatings.enhanced_aluminum]  # SiO2/dielectric-overcoated (enhanced) aluminum -- standard commercial telescope mirror coating
+reflectivity_pct = 94.0
+
+[coatings.protected_silver]  # protected silver -- higher visual reflectivity than aluminum, standard high-end telescope coating
+reflectivity_pct = 97.5
+
+[coatings.dielectric]  # multilayer dielectric high-reflectivity coating -- narrowband-optimized, highest reflectivity option
+reflectivity_pct = 99.0
