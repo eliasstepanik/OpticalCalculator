@@ -43,15 +43,13 @@
 //! pre-validation draft.** `allowable_conic_tolerance` below implements
 //! only the corrected form.
 //!
-//! Any collimation / tilt-coma coefficient (#5, item **C1**) remains
-//! Phase C, BLOCKED pending a dedicated `@ultrathink-high` validation
-//! pass — not implemented here.
+//! Any collimation / tilt-coma coefficient (#5, item **C1**) is
+//! implemented separately in `fabrication::collimation` — not this module.
 //!
-//! Wiring `compute_phase_b_conic` into `fabrication::compute`'s dispatch
-//! match and updating `FabricationReport`'s "T1 pending" notes text
-//! (`fabrication/mod.rs`) are explicitly **out of scope for this chunk**
-//! (VB2's delegation brief restricts edits to this file only) — left as an
-//! open follow-up for the chunk that owns `mod.rs`.
+//! **Wiring is complete.** `compute_phase_b_conic` is called from
+//! `fabrication::dispatch::mod`'s top-level dispatch match
+//! (`fabrication/dispatch/mod.rs`), which populates `FabricationReport`'s
+//! `tolerance` field (`fabrication/mod.rs`).
 
 /// Surface-figure + conic-constant tolerance result: the Rayleigh λ/8
 /// surface P-V figure tolerance (Phase A, Chunk V7), its λ/4

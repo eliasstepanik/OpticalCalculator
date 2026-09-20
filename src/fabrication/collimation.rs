@@ -46,15 +46,14 @@
 //! of curvature is invariant, an exact self-check the formula passes
 //! (magnitude AND side), see [[v2-tolerance-collimation]].
 //!
-//! **Chunk VC1 scope:** standalone module + `compute()` free function
-//! only, per [[formula-validation-v2]] Phase C sign-off. Wiring into
-//! `fabrication::compute`'s dispatch match and adding a `collimation`
-//! field to `FabricationReport` (`fabrication/mod.rs`/`dispatch.rs`) are
-//! explicitly out of scope for this chunk — same deferred-wiring
-//! precedent already used by Chunks V4/V6/V7/VB1/VB3 (this file's brief
-//! restricts edits to `collimation.rs` only; `mod.rs`/`dispatch.rs` are
-//! untouched here, matching `dispatch.rs`'s own doc comment which still
-//! lists `collimation`/#5 as Phase C "BLOCKED, later still").
+//! **Chunk VC1 scope:** standalone module + `compute()` free function,
+//! per [[formula-validation-v2]] Phase C sign-off. Wiring into
+//! `fabrication::compute`'s dispatch match and the `collimation` field
+//! on `FabricationReport` (`fabrication/mod.rs`/`dispatch/phase_c.rs`)
+//! was completed in Chunk VC3 — `dispatch_collimation` in
+//! `fabrication/dispatch/phase_c.rs` now calls `collimation::compute`
+//! and is wired into the top-level dispatch in
+//! `fabrication/dispatch/mod.rs`.
 
 /// One arcsecond in radians: `π / (180 × 3600)`.
 const ARCSEC_TO_RAD: f64 = std::f64::consts::PI / (180.0 * 3600.0);

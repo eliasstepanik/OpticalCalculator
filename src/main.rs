@@ -50,9 +50,14 @@ struct Cli {
 
     /// Optional output file; format inferred from extension
     /// (`.json`/`.toml`/plain text — see `render::write_output_file`).
-    /// Applies to the v1 `SpecSheet` only — the fabrication report (below)
-    /// always goes to stdout in this version ([[task-snapshot-v2-phaseA]]
-    /// V9 row).
+    /// Writes the v1 `SpecSheet` to this exact path unchanged
+    /// ([[architecture-v2]] §3 data flow: "SpecSheet export unchanged").
+    /// When `--fabrication` is also set, the `FabricationReport` is
+    /// ADDITIONALLY written next to it via the same extension-inference
+    /// logic (`render_fabrication::write_output_file`), at a derived path
+    /// with `.fabrication` inserted before the extension (`foo.json` ->
+    /// `foo.fabrication.json`; `foo` -> `foo.fabrication`) — "report export
+    /// via same extension logic" in the same architecture line.
     #[arg(long)]
     output: Option<PathBuf>,
 
@@ -125,7 +130,32 @@ fn main() -> anyhow::Result<()> {
         .context("computing fabrication report")?;
 
         println!("{}", render_fabrication::render_table(&report));
+
+        if let Some(output_path) = &cli.output {
+            let fabrication_path = fabrication_output_path(output_path);
+            render_fabrication::write_output_file(&report, &fabrication_path).with_context(
+                || format!("writing fabrication output file {}", fabrication_path.display()),
+            )?;
+        }
     }
 
     Ok(())
+}
+
+/// Derive the fabrication-report sibling path for `--output`: insert
+/// `.fabrication` before the file extension (`foo.json` ->
+/// `foo.fabrication.json`), or append it when there is no extension
+/// (`foo` -> `foo.fabrication`). Keeps the v1 `SpecSheet` export at the
+/// exact `--output` path untouched while giving the fabrication report its
+/// own file via the same extension-inference logic
+/// ([[architecture-v2]] §3).
+fn fabrication_output_path(output_path: &std::path::Path) -> PathBuf {
+    match output_path.extension().and_then(|e| e.to_str()) {
+        Some(ext) => output_path.with_extension(format!("fabrication.{ext}")),
+        None => {
+            let mut path = output_path.as_os_str().to_owned();
+            path.push(".fabrication");
+            PathBuf::from(path)
+        }
+    }
 }

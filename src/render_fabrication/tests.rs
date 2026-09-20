@@ -14,7 +14,7 @@ fn sample_substrate() -> SubstrateSpec {
         thickness_mm: 50.0,
         thickness_ratio: 6.0,
         solid_volume_cm3: 3534.29,
-        blank_volume_cm3: 2473.98,
+        blank_volume_cm3: 2474.00,
         mass_kg: 5.517,
         solid_mass_kg: 7.882,
         lightweight_fraction: 0.3,
@@ -108,6 +108,34 @@ fn render_table_contains_substrate_and_throughput_sections() {
     assert!(table.contains("enhanced_aluminum"), "{table}");
     assert!(table.contains("88.36%"), "{table}");
     assert!(table.contains("tolerance: pending chunk V9"), "{table}");
+}
+
+/// F2 fix: `ThroughputSpec.applicable == false` (refractor, n_mirrors=0)
+/// must render a "not modeled" note instead of the misleading 100.00%
+/// figure ([[optical-calculator-v2-quality-gate-review]] F2).
+#[test]
+fn render_table_shows_not_modeled_note_when_throughput_not_applicable() {
+    let mut report = sample_report();
+    report.throughput = Some(ThroughputSpec {
+        coating: "enhanced_aluminum".to_string(),
+        reflectivity_pct: 94.0,
+        n_mirrors: 0,
+        system_throughput_pct: 100.0,
+        applicable: false,
+    });
+    let table = render_table(&report);
+    assert!(
+        table.contains("not modeled for refractor designs"),
+        "{table}"
+    );
+    assert!(
+        !table.contains("System throughput:"),
+        "misleading 100% figure must not render when not applicable: {table}"
+    );
+    assert!(
+        !table.contains("Mirror count:"),
+        "mirror count must not render when not applicable: {table}"
+    );
 }
 
 #[test]

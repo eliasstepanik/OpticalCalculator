@@ -46,11 +46,12 @@
 //! rather than duplicating cone math) is scoped OUT of this chunk: even
 //! as thin wrapper plumbing it needs a v1 `NewtonianSecondarySpec` input
 //! shape decision this brief did not fix, so it is left as a follow-up
-//! for a later chunk rather than guessed here. Wiring into
-//! `fabrication::compute`'s dispatch match and `FabricationReport`
-//! (`fabrication/mod.rs`) is likewise out of scope — this chunk stays
-//! scoped to this file only, same "registration only, dispatch wiring
-//! deferred" precedent as Chunks V4/V6/V7.
+//! for a later chunk rather than guessed here.
+//!
+//! **Wiring (Cassegrain-family case) is complete.** `baffle::compute` is
+//! called from `fabrication::dispatch::mod`'s top-level dispatch match
+//! (`fabrication/dispatch/mod.rs`), which populates `FabricationReport`'s
+//! `baffle` field (`fabrication/mod.rs`).
 
 /// Cassegrain-family baffle/vignetting result (#3,
 /// [[v2-baffle-vignetting]] `## BaffleSpec`). `secondary_baffle_tube_length_mm`

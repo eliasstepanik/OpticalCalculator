@@ -26,12 +26,15 @@
 //! primary) lives in the sibling `seidel_trace` submodule — kept separate
 //! to stay under this file's 300-line budget.
 //!
-//! **Chunk VC2 scope:** standalone module + `compute()` free function
-//! only, per [[formula-validation-v2]] Phase C sign-off (parallel to
-//! Chunk VC1's `collimation.rs`). Wiring into `fabrication::compute`'s
-//! dispatch match and adding a `seidel` field to `FabricationReport`
-//! (`fabrication/mod.rs`/`dispatch.rs`) are explicitly out of scope —
-//! same deferred-wiring precedent as V4/V6/V7/VB1/VB3/VC1.
+//! **Chunk VC2 scope:** standalone module + `compute()` free function,
+//! per [[formula-validation-v2]] Phase C sign-off (parallel to Chunk
+//! VC1's `collimation.rs`).
+//!
+//! **Wiring is complete.** `dispatch_seidel` in
+//! `fabrication/dispatch/phase_c.rs` calls `seidel::compute` and is
+//! wired into the top-level dispatch in `fabrication/dispatch/mod.rs`,
+//! which populates `FabricationReport`'s `seidel` field
+//! (`fabrication/mod.rs`).
 
 mod seidel_trace;
 

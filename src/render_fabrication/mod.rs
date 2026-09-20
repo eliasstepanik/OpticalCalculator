@@ -42,14 +42,23 @@ pub fn render_table(report: &FabricationReport) -> String {
 
     if let Some(t) = &report.throughput {
         let _ = writeln!(out, "\n-- Optical Throughput --");
-        let _ = writeln!(out, "Coating:         {}", t.coating);
-        let _ = writeln!(out, "Reflectivity:    {:.2}%", t.reflectivity_pct);
-        let _ = writeln!(out, "Mirror count:    {}", t.n_mirrors);
-        let _ = writeln!(
-            out,
-            "System throughput: {:.2}%",
-            t.system_throughput_pct
-        );
+        if t.applicable {
+            let _ = writeln!(out, "Coating:         {}", t.coating);
+            let _ = writeln!(out, "Reflectivity:    {:.2}%", t.reflectivity_pct);
+            let _ = writeln!(out, "Mirror count:    {}", t.n_mirrors);
+            let _ = writeln!(
+                out,
+                "System throughput: {:.2}%",
+                t.system_throughput_pct
+            );
+        } else {
+            let _ = writeln!(
+                out,
+                "Optical Throughput: not modeled for refractor designs \
+                 (mirror-coating formula only; glass transmission losses \
+                 not calculated)"
+            );
+        }
     }
 
     if let Some(tol) = &report.tolerance {

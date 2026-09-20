@@ -228,11 +228,16 @@ fn unknown_substrate_errors_gracefully() {
     fs::remove_dir_all(&dir).ok();
 }
 
-/// Per `main.rs`'s `--output` doc comment, `--output` applies to the v1
-/// `SpecSheet` only — the fabrication report always goes to stdout, even
-/// when `--output` is also passed. Verify both halves of that behavior:
-/// the output file contains the v1 sheet (no fabrication data), and stdout
-/// still carries the fabrication report.
+/// Per `main.rs`'s `--output` doc comment (updated by the F3 fix,
+/// [[optical-calculator-v2-quality-gate-review]]): `--output <path>`
+/// writes the v1 `SpecSheet` to `<path>` unchanged, and — when
+/// `--fabrication` is also set — ADDITIONALLY writes the
+/// `FabricationReport` to a derived sibling path
+/// (`<path>.fabrication.<ext>`). The fabrication report also still
+/// prints to stdout regardless. Verify: the `--output` file itself
+/// contains only the v1 sheet (no fabrication data, still a distinct
+/// type per architecture-v2.md decision #4), and stdout still carries
+/// the fabrication report.
 #[test]
 fn fabrication_report_via_output_flag_or_stdout_only() {
     let dir = std::env::temp_dir().join(format!(
@@ -278,6 +283,16 @@ fn fabrication_report_via_output_flag_or_stdout_only() {
         "{stdout}"
     );
     assert!(stdout.contains("System throughput: 88.36%"), "{stdout}");
+
+    // The fabrication report is ALSO written to the derived sibling file
+    // (F3 fix) — confirm it exists and is valid JSON with fabrication data.
+    let fab_path = dir.join("out.fabrication.json");
+    let fab_contents =
+        fs::read_to_string(&fab_path).expect("fabrication sibling file should exist");
+    let fab_parsed: serde_json::Value =
+        serde_json::from_str(&fab_contents).expect("fabrication file should be valid JSON");
+    assert_eq!(fab_parsed["design_name"], "rc");
+    assert!(fab_parsed.get("throughput").is_some());
 
     fs::remove_dir_all(&dir).ok();
 }

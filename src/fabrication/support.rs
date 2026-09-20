@@ -4,14 +4,13 @@
 //! finite-element ([[constraints]] analytical-only), now VERIFIED as item
 //! **S1** in [[formula-validation-v2]].
 //!
-//! **Chunk VB3 scope:** standalone module + `compute()` free function
-//! only. Wiring into `fabrication::compute`'s dispatch match and adding a
-//! `support` field to `FabricationReport` (`fabrication/mod.rs`) are
-//! explicitly out of scope for this chunk (VB3's delegation brief
-//! restricts edits to `support.rs`, `substrate.rs`, and
-//! `configs/substrates.toml` only) — left as an open follow-up for the
-//! chunk that owns `mod.rs`'s dispatch wiring, same deferred-wiring
-//! pattern already used by Chunks V4/V6/V7/VB1.
+//! **Chunk VB3 scope:** standalone module + `compute()` free function,
+//! per [[task-snapshot-v2-phaseB]].
+//!
+//! **Wiring is complete.** `support::compute` is called from
+//! `fabrication::dispatch::mod`'s top-level dispatch match
+//! (`fabrication/dispatch/mod.rs`), which populates `FabricationReport`'s
+//! `support` field (`fabrication/mod.rs`).
 //!
 //! **Reference:** Timoshenko & Woinowsky-Krieger, *Theory of Plates and
 //! Shells*, 2nd ed., ch. 3 (circular-plate deflection under uniformly
@@ -51,11 +50,15 @@
 //! name (returns `OptError::InvalidValue` for an unrecognized scheme,
 //! reusing the existing generic validation-style error variant rather
 //! than adding a new one-off variant to `error.rs` for a single call
-//! site). All numeric inputs (`diameter_mm`, `thickness_mm`, density,
-//! Young's modulus, `n_points`) are already range-validated upstream by
-//! `request_validate.rs`/the substrate catalog before reaching this
-//! module, mirroring every other Phase A/B subsystem's infallibility
-//! convention (`substrate_mass.rs`, `tolerance/mod.rs`).
+//! site). `diameter_mm`/`thickness_mm`/density/Young's modulus reach this
+//! module already range-validated (aperture, `thickness_ratio`, and the
+//! substrate catalog itself). **`n_points` (`req.support_n_points`) is
+//! now ALSO range-checked upstream** by `request_validate.rs`
+//! (`>= 3`, architecture-v2.md §2d) — fixed post quality-gate finding F1,
+//! which caught this doc comment previously and falsely claiming that
+//! check already existed when `support_n_points=0` actually reached this
+//! module unchecked and produced `RMS sag: inf nm` (divide-by-`n*n==0`)
+//! at exit code 0.
 
 use crate::error::OptError;
 use crate::substrate::Substrate;
