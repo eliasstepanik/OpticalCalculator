@@ -24,6 +24,22 @@
 //! "not yet computed" or "not applicable", mirroring v1's Chunk 8
 //! graceful-stub precedent (`output.rs`'s `Option` fields before their
 //! pipelines existed).
+//!
+//! **Chunk V4 addition:** `substrate_mass` submodule declared below so the
+//! new `src/fabrication/substrate_mass.rs` (physics for `SubstrateSpec`,
+//! [[v2-substrate-mass]]) is part of the crate tree. This is the minimal
+//! module registration only — calling `substrate_mass::compute` from this
+//! file's `compute()` dispatch match below is Chunk V9's job per
+//! [[task-snapshot-v2-phaseA]]'s chunk table, left untouched here.
+pub mod substrate_mass;
+
+/// **Chunk V6 addition:** `throughput` submodule declared below, same
+/// minimal-registration-only pattern as Chunk V4's `substrate_mass` line
+/// above — `src/fabrication/throughput.rs` (physics for `ThroughputSpec`,
+/// [[v2-coatings-throughput]]) is now part of the crate tree. Calling
+/// `throughput::compute` from this file's `compute()` dispatch match below
+/// is still Chunk V9's job, left untouched here.
+pub mod throughput;
 
 /// Mirror-blank substrate mass/thickness result (#1+#2,
 /// [[v2-substrate-mass]] `### SubstrateSpec`). Populated by
