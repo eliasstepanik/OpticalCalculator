@@ -74,6 +74,29 @@ pub mod baffle;
 /// and `FabricationReport.support` carries the result.
 pub mod support;
 
+/// **Chunk VC1 addition:** `src/fabrication/collimation.rs`
+/// (two-mirror decenter/tilt-to-coma physics for `CollimationSpec`,
+/// [[v2-tolerance-collimation]] C1 VERIFIED). Same
+/// "registration only, dispatch deferred" pattern as Chunks
+/// V4/V6/V7/VB1/VB3 above: `collimation::compute` is NOT yet called from
+/// `dispatch.rs`'s `compute()` match, and `FabricationReport` does not
+/// yet carry a `collimation` field — both are left for a later
+/// integration chunk (this chunk's brief restricts edits to
+/// `collimation.rs` only).
+pub mod collimation;
+
+/// **Chunk VC2 addition:** `src/fabrication/seidel.rs` (+ sibling
+/// `seidel/seidel_trace.rs` for the paraxial trace machinery,
+/// `seidel/tests.rs` for its tests) — two-mirror third-order Seidel
+/// aberration sums for `SeidelSpec`, [[v2-support-seidel]] S2 VERIFIED.
+/// Same "registration only, dispatch deferred" pattern as Chunk VC1's
+/// `collimation` line above: `seidel::compute` is NOT yet called from
+/// `dispatch.rs`'s `compute()` match, and `FabricationReport` does not
+/// yet carry a `seidel` field — both left for a later integration chunk
+/// (this chunk's brief restricts edits to `seidel.rs` + its sibling split
+/// files only).
+pub mod seidel;
+
 /// V-8 addition: the `compute()` dispatch free-function + its helper
 /// functions, split into a sibling file to keep this one under the
 /// 300-line limit (this file already carries 5 struct definitions plus
