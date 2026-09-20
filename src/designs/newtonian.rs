@@ -171,6 +171,8 @@ mod tests {
             conic_mode: None,
             glasses: None,
             power_split: None,
+            n_mirrors: None,
+            fab_applicable: None,
         }
     }
 
@@ -187,6 +189,12 @@ mod tests {
             sensor_diag_mm: None,
             wavelength_nm: None,
             output_path: None,
+            substrate: None,
+            lightweight_fraction: None,
+            coating: None,
+            thickness_ratio: None,
+            support_scheme: None,
+            support_n_points: None,
         }
     }
 

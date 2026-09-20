@@ -47,6 +47,49 @@ pub(crate) fn validate_values(req: &Request) -> Result<(), OptError> {
             });
         }
     }
+    // v2 (`--fabrication`, Phase A, #1). `lightweight_fraction` is a pocket
+    // volume fraction removed from a solid blank. KB architecture-v2.md
+    // §2d + v2-substrate-mass.md both pin the bound at [0.0, 0.8] (not
+    // 1.0 — a fully-hollowed 100% pocket-fraction blank is not physical).
+    // Only checked when present, matching every other v2-guarded field.
+    if let Some(v) = req.lightweight_fraction {
+        if !v.is_finite() || !(0.0..=0.8).contains(&v) {
+            return Err(OptError::InvalidValue {
+                field: "lightweight_fraction".to_string(),
+                reason: format!("must be finite and in [0.0, 0.8], got {v}"),
+            });
+        }
+    }
+    // v2 (`--fabrication`, Phase A, #1). `thickness_ratio` overrides the
+    // default D/6 ATM rule — see KB doc v2-substrate-mass.md sanity bound
+    // "4.0 <= thickness_ratio <= 12.0".
+    if let Some(v) = req.thickness_ratio {
+        if !v.is_finite() || !(4.0..=12.0).contains(&v) {
+            return Err(OptError::InvalidValue {
+                field: "thickness_ratio".to_string(),
+                reason: format!("must be finite and in [4.0, 12.0], got {v}"),
+            });
+        }
+    }
+    // v2 (`--fabrication`, Phase B, #6). architecture-v2.md §2d pins
+    // `support_points >= 3` — a discrete-support gravity-sag formula with
+    // 0 or 1 points is not a real support (0 divides-by-zero to `inf` sag;
+    // 1 contradicts every named `support_scheme`, e.g. "9_point" with "1
+    // points"). `full_disk` ignores `n_points` entirely in
+    // `support::compute` (continuous-bed sag is reported as 0.0
+    // regardless of the value), but the architecture doc states the bound
+    // unconditionally with no scheme carve-out, and enforcing it
+    // unconditionally costs nothing (a `full_disk` request has no reason
+    // to send fewer than 3 anyway) — so this check applies to every
+    // scheme alike, the simplest correct reading of §2d.
+    if let Some(v) = req.support_n_points {
+        if v < 3 {
+            return Err(OptError::InvalidValue {
+                field: "support_n_points".to_string(),
+                reason: format!("must be >= 3, got {v}"),
+            });
+        }
+    }
     Ok(())
 }
 
@@ -75,86 +118,4 @@ fn non_negative_finite(field: &str, value: f64) -> Result<(), OptError> {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// A fully-populated, all-valid `Request` — tests mutate one field at a
-    /// time off this baseline.
-    fn valid_request() -> Request {
-        Request {
-            design: "newtonian".to_string(),
-            aperture_mm: 200.0,
-            f_ratio: 6.0,
-            focuser_backfocus_mm: Some(220.0),
-            field_diam_mm: Some(20.0),
-            primary_f_ratio: None,
-            backfocus_mm: None,
-            eyepiece_fieldstop_mm: Some(27.5),
-            sensor_diag_mm: None,
-            wavelength_nm: None,
-            output_path: None,
-        }
-    }
-
-    #[test]
-    fn valid_request_passes_value_checks() {
-        assert!(validate_values(&valid_request()).is_ok());
-    }
-
-    #[test]
-    fn negative_aperture_mm_is_invalid_value_not_panic() {
-        let mut req = valid_request();
-        req.aperture_mm = -200.0;
-        let err = validate_values(&req).expect_err("must reject negative aperture");
-        match err {
-            OptError::InvalidValue { field, .. } => assert_eq!(field, "aperture_mm"),
-            other => panic!("expected InvalidValue, got {other:?}"),
-        }
-    }
-
-    #[test]
-    fn zero_f_ratio_is_invalid_value() {
-        let mut req = valid_request();
-        req.f_ratio = 0.0;
-        let err = validate_values(&req).expect_err("must reject zero f_ratio");
-        match err {
-            OptError::InvalidValue { field, .. } => assert_eq!(field, "f_ratio"),
-            other => panic!("expected InvalidValue, got {other:?}"),
-        }
-    }
-
-    #[test]
-    fn nan_aperture_mm_is_invalid_value_not_panic() {
-        let mut req = valid_request();
-        req.aperture_mm = f64::NAN;
-        let err = validate_values(&req).expect_err("must reject NaN aperture");
-        match err {
-            OptError::InvalidValue { field, .. } => assert_eq!(field, "aperture_mm"),
-            other => panic!("expected InvalidValue, got {other:?}"),
-        }
-    }
-
-    /// Regression: `eyepiece_fieldstop_mm` was omitted from `validate_values`
-    /// entirely, so a negative field-stop diameter (physically impossible)
-    /// passed validation and produced a negative true-FOV with exit code 0.
-    /// See `notes/optical-calculator-request-range-validation-gap.md`.
-    #[test]
-    fn negative_eyepiece_fieldstop_mm_is_invalid_value() {
-        let mut req = valid_request();
-        req.eyepiece_fieldstop_mm = Some(-27.5);
-        let err = validate_values(&req).expect_err("must reject negative eyepiece fieldstop");
-        match err {
-            OptError::InvalidValue { field, .. } => assert_eq!(field, "eyepiece_fieldstop_mm"),
-            other => panic!("expected InvalidValue, got {other:?}"),
-        }
-    }
-
-    #[test]
-    fn zero_eyepiece_fieldstop_mm_is_valid() {
-        // Zero is a physically valid point field stop, same rule as
-        // field_diam_mm/sensor_diag_mm.
-        let mut req = valid_request();
-        req.eyepiece_fieldstop_mm = Some(0.0);
-        assert!(validate_values(&req).is_ok());
-    }
-}
+mod tests;

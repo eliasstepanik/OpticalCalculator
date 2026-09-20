@@ -22,3 +22,20 @@ backfocus_mm = 150.0
 sensor_diag_mm = 28.4          # full-frame sensor diagonal (36x24mm), mm
 eyepiece_fieldstop_mm = 27.0   # e.g. a 2" 30mm eyepiece's field-stop diameter
 wavelength_nm = 550.0          # visual green (this is also the ATM default)
+
+# v2 (--fabrication, Chunk V9) -- only consulted when --fabrication is
+# passed AND the design's fab_applicable list includes the matching
+# subsystem (configs/designs.toml's [designs.rc]: substrate, tolerance,
+# baffle, support, throughput). Ignored entirely on a v1 (no
+# --fabrication) run.
+substrate = "pyrex"            # classic low-cost ATM mirror blank
+coating = "enhanced_aluminum"  # standard commercial telescope mirror coating
+
+# field_diam_mm: fully-illuminated field diameter, mm -- feeds the v2
+# baffle subsystem (#3, [[v2-baffle-vignetting]]); reused here as 2h
+# (B1's pinned h-convention) rather than a new field_of_view_deg input.
+# 20mm matches the A2 RC worked example in formula-validation-v2.md.
+# support_scheme/support_n_points (#6) are left unset -- fully optional
+# with sensible defaults ("9_point"/9) applied by fabrication::compute
+# when absent, so this example needed no new required fields for V-8.
+field_diam_mm = 20.0

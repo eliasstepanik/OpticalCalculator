@@ -1,0 +1,82 @@
+# Mirror-blank substrate catalog for OpticalCalculator v2 (`--fabrication`).
+#
+# Distinct from v1's optical LENS glass catalog (glasses.toml, nd/vd/pgf) --
+# this catalog is MIRROR BLANK material: coefficient of thermal expansion
+# (CTE) and density feed subsystem #1 (thickness/mass, substrate_mass.rs)
+# and are echoed in the fabrication report for material comparison
+# (CTE feeds no v2 formula directly -- reserved for a later thermal-defocus
+# subsystem per v2-substrate-mass.md).
+#
+# Schema (v2-substrate-mass.md): one [substrates.<key>] table per material,
+# keyed by the name used in Request.substrate. The table does NOT repeat
+# `name` -- the loader (config::load_substrates, a later chunk) reads the
+# TOML key as `Substrate.name`, mirroring glasses.toml's GlassEntry pattern.
+#
+# Sanity bounds (v2-substrate-mass.md): 0.01 <= cte_ppm_per_k <= 10,
+# 2.0 <= density_g_cm3 <= 3.0, 1 <= cost_tier <= 5. cte_ppm_per_k is CTE in
+# units of 1e-6/K (ppm/K). cost_tier is a relative 1 (cheap) .. 5 (premium)
+# ranking, not a dollar figure. max_aperture_mm is the typical max practical
+# amateur-telescope-maker aperture for that material/process.
+#
+# Values are real, published optical-shop substrate figures (manufacturer
+# datasheets / standard optical-shop reference data), cited per entry below.
+#
+# youngs_modulus_gpa (Phase B, S1 VERIFIED — see
+# projects/optical-calculator/formula-validation-v2.md and
+# notes/optical-calculator-substrate-youngs-modulus.md): Young's modulus E in
+# GPa, feeding the mirror support-sag formula (#6, src/fabrication/support.rs).
+# Backward-compatible additive field. Sanity bound: 50.0 <= youngs_modulus_gpa
+# <= 100.0 (covers all 5 catalog materials with headroom).
+
+[substrates.pyrex]  # Corning Pyrex (R) 7740 borosilicate glass -- Corning
+                     # 7740 datasheet: CTE = 32.5 x 1e-7/K = 3.25 ppm/K,
+                     # density = 2.23 g/cm3. Classic low-cost ATM mirror
+                     # blank material (Berry & Kriege, "The Dobsonian
+                     # Telescope").
+cte_ppm_per_k     = 3.25
+density_g_cm3     = 2.23
+cost_tier         = 2
+max_aperture_mm   = 500.0
+youngs_modulus_gpa = 63.0  # Corning 7740 datasheet
+
+[substrates.bk7]  # Schott N-BK7 -- also used as a mirror blank, not just a
+                   # lens glass. Schott N-BK7 datasheet: CTE (20-300C)
+                   # = 7.1 x 1e-6/K, density = 2.51 g/cm3.
+cte_ppm_per_k     = 7.1
+density_g_cm3     = 2.51
+cost_tier         = 2
+max_aperture_mm   = 400.0
+youngs_modulus_gpa = 82.0  # Schott N-BK7 datasheet
+
+[substrates.fused_silica]  # Fused silica (synthetic amorphous SiO2) --
+                            # standard optical-shop reference: CTE
+                            # ~= 0.55 x 1e-6/K (0.52-0.58 depending on
+                            # grade), density = 2.20 g/cm3. Low thermal
+                            # expansion, common large-aperture research
+                            # mirror substrate.
+cte_ppm_per_k     = 0.55
+density_g_cm3     = 2.20
+cost_tier         = 4
+max_aperture_mm   = 4000.0
+youngs_modulus_gpa = 73.0  # Corning HPFS 7980 datasheet
+
+[substrates.ule]  # Corning ULE (R) 7972 titania-silicate glass -- Corning
+                   # ULE 7972 datasheet: CTE ~= 0.03 x 1e-6/K (near-zero,
+                   # 0 +/- 30 ppb/K design target), density = 2.21 g/cm3.
+                   # Used for large research/space-telescope mirrors.
+cte_ppm_per_k     = 0.03
+density_g_cm3     = 2.21
+cost_tier         = 5
+max_aperture_mm   = 8000.0
+youngs_modulus_gpa = 67.6  # Corning ULE 7972 datasheet
+
+[substrates.zerodur]  # Schott Zerodur (R) glass-ceramic -- Schott Zerodur
+                       # datasheet: CTE class-0 ~= 0.007-0.02 x 1e-6/K;
+                       # using 0.02 ppm/K as the conservative class-0
+                       # upper bound. Density = 2.53 g/cm3. Standard
+                       # large-observatory mirror substrate.
+cte_ppm_per_k     = 0.02
+density_g_cm3     = 2.53
+cost_tier         = 5
+max_aperture_mm   = 8000.0
+youngs_modulus_gpa = 90.3  # Schott Zerodur datasheet

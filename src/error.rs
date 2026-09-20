@@ -47,6 +47,18 @@ pub enum OptError {
     #[error("glass '{0}' not found in catalog")]
     UnknownGlass(String),
 
+    /// v2: a mirror-blank substrate name (`Request.substrate`) is not in
+    /// the substrate catalog (`substrates.toml`; see KB doc
+    /// v2-substrate-mass.md). Mirrors `UnknownGlass`.
+    #[error("substrate '{0}' not found in catalog")]
+    UnknownSubstrate(String),
+
+    /// v2: a coating name (`Request.coating`) is not in the coating
+    /// catalog (`coatings.toml`; see KB doc v2-coatings-throughput.md).
+    /// Mirrors `UnknownGlass`.
+    #[error("coating '{0}' not found in catalog")]
+    UnknownCoating(String),
+
     /// The chromatic linear system (`solve_linear`) hit a zero/near-zero
     /// pivot — e.g. two glasses with identical Abbe number.
     #[error(
@@ -60,4 +72,24 @@ pub enum OptError {
         path: String,
         source: std::io::Error,
     },
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// v2 Chunk V1 acceptance check (1): the two new v2 error variants
+    /// exist and format correctly, mirroring `UnknownGlass`'s shape/message
+    /// style exactly.
+    #[test]
+    fn unknown_substrate_formats_like_unknown_glass() {
+        let err = OptError::UnknownSubstrate("moon_rock".to_string());
+        assert_eq!(err.to_string(), "substrate 'moon_rock' not found in catalog");
+    }
+
+    #[test]
+    fn unknown_coating_formats_like_unknown_glass() {
+        let err = OptError::UnknownCoating("unobtainium".to_string());
+        assert_eq!(err.to_string(), "coating 'unobtainium' not found in catalog");
+    }
 }
