@@ -75,6 +75,7 @@ mod tests {
             density_g_cm3: 2.23,
             cost_tier: 2,
             max_aperture_mm: 500.0,
+            youngs_modulus_gpa: 63.0,
         }
     }
 

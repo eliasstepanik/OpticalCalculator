@@ -122,6 +122,22 @@ pub struct Request {
     /// `fabrication::substrate_mass`. Sanity range `[4.0, 12.0]`.
     #[serde(default)]
     pub thickness_ratio: Option<f64>,
+
+    /// v2 (`--fabrication`, Phase B, #6, VB4/V-8). Mirror support scheme
+    /// name, a key into `fabrication::support::scheme_constant`'s table
+    /// (`"3_point"`, `"6_point"`, `"9_point"`, `"whiffletree"`,
+    /// `"full_disk"`). Only consulted when `"support"` is in the design's
+    /// `fab_applicable` list. Defaults to `"9_point"` when unset —
+    /// `fabrication::compute` applies this default, matching the
+    /// ATM-standard N>=6 recommendation ([[formula-validation-v2]] S1).
+    #[serde(default)]
+    pub support_scheme: Option<String>,
+
+    /// v2 (`--fabrication`, Phase B, #6, VB4/V-8). Number of discrete
+    /// mirror support points, paired with `support_scheme`. Defaults to
+    /// `9` when unset.
+    #[serde(default)]
+    pub support_n_points: Option<u32>,
 }
 
 impl Request {
@@ -167,6 +183,8 @@ impl Request {
             "lightweight_fraction" => self.lightweight_fraction.is_some(),
             "coating" => self.coating.is_some(),
             "thickness_ratio" => self.thickness_ratio.is_some(),
+            "support_scheme" => self.support_scheme.is_some(),
+            "support_n_points" => self.support_n_points.is_some(),
             _ => false,
         }
     }

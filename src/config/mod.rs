@@ -110,6 +110,7 @@ struct SubstrateEntry {
     density_g_cm3: f64,
     cost_tier: u8,
     max_aperture_mm: f64,
+    youngs_modulus_gpa: f64,
 }
 
 /// Top-level `substrates.toml` container: `[substrates.<key>]` map keyed by
@@ -197,6 +198,7 @@ pub fn load_substrates(path: &Path) -> Result<SubstrateCatalog, OptError> {
             density_g_cm3: e.density_g_cm3,
             cost_tier: e.cost_tier,
             max_aperture_mm: e.max_aperture_mm,
+            youngs_modulus_gpa: e.youngs_modulus_gpa,
         })
         .collect();
     Ok(SubstrateCatalog::from_substrates(substrates))

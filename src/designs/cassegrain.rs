@@ -164,6 +164,8 @@ mod tests {
             lightweight_fraction: None,
             coating: None,
             thickness_ratio: None,
+            support_scheme: None,
+            support_n_points: None,
         }
     }
 

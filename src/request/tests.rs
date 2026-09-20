@@ -49,6 +49,8 @@ fn newtonian_request(focuser_backfocus_mm: Option<f64>, field_diam_mm: Option<f6
         lightweight_fraction: None,
         coating: None,
         thickness_ratio: None,
+        support_scheme: None,
+        support_n_points: None,
     }
 }
 
@@ -102,6 +104,8 @@ fn rc_request_with_f2_fields_validates_ok() {
         lightweight_fraction: None,
         coating: None,
         thickness_ratio: None,
+        support_scheme: None,
+        support_n_points: None,
     };
     assert!(req.validate(&rc_def()).is_ok());
 }
@@ -124,6 +128,8 @@ fn rc_request_missing_backfocus_errs_naming_it() {
         lightweight_fraction: None,
         coating: None,
         thickness_ratio: None,
+        support_scheme: None,
+        support_n_points: None,
     };
     let err = req.validate(&rc_def()).expect_err("must fail");
     match err {

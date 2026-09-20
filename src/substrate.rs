@@ -29,6 +29,11 @@ pub struct Substrate {
     pub cost_tier: u8,
     /// Typical max practical amateur-telescope-maker aperture, in mm.
     pub max_aperture_mm: f64,
+    /// Young's modulus in GPa (Phase B, S1 VERIFIED — see KB
+    /// notes/optical-calculator-substrate-youngs-modulus.md). Feeds the
+    /// mirror support-sag formula (#6, `fabrication::support`).
+    /// Backward-compatible additive field.
+    pub youngs_modulus_gpa: f64,
 }
 
 /// Catalog of named substrates, keyed by `Substrate::name` for O(1) lookup.
@@ -69,6 +74,7 @@ mod tests {
         density_g_cm3: f64,
         cost_tier: u8,
         max_aperture_mm: f64,
+        youngs_modulus_gpa: f64,
     }
 
     #[derive(Debug, Clone, serde::Deserialize)]
@@ -88,6 +94,7 @@ mod tests {
                 density_g_cm3: e.density_g_cm3,
                 cost_tier: e.cost_tier,
                 max_aperture_mm: e.max_aperture_mm,
+                youngs_modulus_gpa: e.youngs_modulus_gpa,
             })
             .collect();
         SubstrateCatalog::from_substrates(substrates)
@@ -104,6 +111,8 @@ mod tests {
         assert!(pyrex.cte_ppm_per_k >= 0.01 && pyrex.cte_ppm_per_k <= 10.0);
         assert!(pyrex.density_g_cm3 >= 2.0 && pyrex.density_g_cm3 <= 3.0);
         assert!(pyrex.cost_tier >= 1 && pyrex.cost_tier <= 5);
+        assert!((pyrex.youngs_modulus_gpa - 63.0).abs() < 1e-9);
+        assert!(pyrex.youngs_modulus_gpa >= 50.0 && pyrex.youngs_modulus_gpa <= 100.0);
 
         let ule = cat.get("ule").expect("ule should be in catalog");
         assert_eq!(ule.name, "ule");
@@ -111,6 +120,7 @@ mod tests {
         assert!((ule.density_g_cm3 - 2.21).abs() < 1e-9);
         assert!(ule.cte_ppm_per_k >= 0.01 && ule.cte_ppm_per_k <= 10.0);
         assert!(ule.density_g_cm3 >= 2.0 && ule.density_g_cm3 <= 3.0);
+        assert!((ule.youngs_modulus_gpa - 67.6).abs() < 1e-9);
     }
 
     #[test]

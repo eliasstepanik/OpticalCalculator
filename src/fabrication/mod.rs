@@ -30,6 +30,15 @@
 //! are all called and their results populate `FabricationReport`'s
 //! `substrate`/`throughput`/`tolerance` fields. See `compute()`'s own doc
 //! comment for the per-subsystem gating rules.
+//!
+//! **V-8 update (Phase B dispatch wiring):** `compute()` now also calls
+//! `baffle::compute`/`support::compute`/`tolerance::compute_phase_b_conic`
+//! when `"baffle"`/`"support"` are in `fab_applicable` and the design's
+//! `SpecSheet` has the geometry each needs. The dispatch logic itself
+//! lives in `fabrication/dispatch.rs` (split out to keep this file under
+//! the 300-line limit once the Phase B wiring was added) — this file now
+//! owns only the module declarations and the report/subsystem struct
+//! shapes.
 pub mod substrate_mass;
 
 /// **Chunk V6 addition:** `throughput` submodule declared below, same
@@ -49,6 +58,28 @@ pub mod throughput;
 /// match, and adding a `tolerance` field to `FabricationReport`, are still
 /// Chunk V9's job, left untouched here.
 pub mod tolerance;
+
+/// **Chunk VB1 addition, wired V-8:** `src/fabrication/baffle.rs`
+/// (Cassegrain-family physics for `BaffleSpec`, [[v2-baffle-vignetting]]
+/// B1 VERIFIED). `baffle::compute` is now called from `dispatch.rs`'s
+/// `compute()` when `"baffle"` is in a Cassegrain-family design's
+/// `fab_applicable` list, and `FabricationReport.baffle` carries the
+/// result.
+pub mod baffle;
+
+/// **Chunk VB3 addition, wired V-8:** `src/fabrication/support.rs`
+/// (mirror support-sag physics for `SupportSpec`, [[v2-support-seidel]]
+/// S1 VERIFIED). `support::compute` is now called from `dispatch.rs`'s
+/// `compute()` when `"support"` is in a design's `fab_applicable` list,
+/// and `FabricationReport.support` carries the result.
+pub mod support;
+
+/// V-8 addition: the `compute()` dispatch free-function + its helper
+/// functions, split into a sibling file to keep this one under the
+/// 300-line limit (this file already carries 5 struct definitions plus
+/// module declarations before dispatch logic is even added).
+mod dispatch;
+pub use dispatch::compute;
 
 /// Mirror-blank substrate mass/thickness result (#1+#2,
 /// [[v2-substrate-mass]] `### SubstrateSpec`). Populated by
@@ -104,11 +135,11 @@ pub struct ThroughputSpec {
 /// wired and computed by `compute()` below (Chunk V9,
 /// [[task-snapshot-v2-phaseA]] V9 row).
 ///
-/// **Phase B (later chunks):** `baffle: Option<BaffleSpec>` (#3,
-/// [[v2-baffle-vignetting]]), `support: Option<SupportSpec>` (#6,
-/// [[v2-support-seidel]]) are NOT yet fields on this struct — they land
-/// with their Phase B subsystem chunks, per
-/// [[task-snapshot-v2-phaseA]]/[[task-snapshot-v2-phaseB]].
+/// **Phase B, wired V-8:** `baffle: Option<baffle::BaffleSpec>` (#3,
+/// [[v2-baffle-vignetting]]), `support: Option<support::SupportSpec>` (#6,
+/// [[v2-support-seidel]]), and `tolerance`'s conic-tolerance fields (T1,
+/// via `tolerance::compute_phase_b_conic`) are now computed by `compute()`
+/// (`dispatch.rs`) per [[task-snapshot-v2-phaseB]]'s VB4 row.
 ///
 /// **Phase C (BLOCKED, later still):** `collimation: Option<CollimationSpec>`
 /// (#5) and `seidel: Option<SeidelSpec>` (#7) are gated behind
@@ -120,153 +151,24 @@ pub struct FabricationReport {
     pub design_name: String,
     pub substrate: Option<SubstrateSpec>,
     pub throughput: Option<ThroughputSpec>,
-    /// #4 (Phase A, λ/8-only subset), [[v2-tolerance-collimation]]. Added
-    /// Chunk V9 per [[task-snapshot-v2-phaseA]] V7 row ("T1 pending note
-    /// belongs to V9, which owns `FabricationReport.notes`").
+    /// #4, [[v2-tolerance-collimation]]. Phase A (λ/8-only) added Chunk
+    /// V9; Phase B conic-tolerance fields (T1 VERIFIED) populated by
+    /// `dispatch.rs`'s `compute()` since V-8, via
+    /// `tolerance::compute_phase_b_conic` for Cassegrain-family designs
+    /// with conic geometry (falls back to `compute_phase_a` otherwise).
     pub tolerance: Option<crate::fabrication::tolerance::ToleranceSpec>,
+    /// #3, [[v2-baffle-vignetting]] (B1 VERIFIED). V-8 addition —
+    /// Cassegrain-family designs only ([[v2-baffle-vignetting]] scopes the
+    /// Newtonian variant out); `None` for non-Cassegrain designs or when
+    /// `field_diam_mm` is absent from the request.
+    pub baffle: Option<crate::fabrication::baffle::BaffleSpec>,
+    /// #6, [[v2-support-seidel]] (S1 VERIFIED). V-8 addition — any mirror
+    /// design (Newtonian and Cassegrain-family alike; a lens has no
+    /// support-sag concept).
+    pub support: Option<crate::fabrication::support::SupportSpec>,
     /// "Not applicable to this design" / "not yet computed" / caveat
     /// messages — mirrors `SpecSheet.notes` (`output.rs`).
     pub notes: Vec<String>,
-}
-
-/// Resolve which fabrication subsystem keys apply to `def`, per
-/// [[architecture-v2]] §2a: an explicit `def.fab_applicable` list wins;
-/// absent, infer a default from `def.kind` ("reflector"/"catadioptric" ->
-/// substrate/tolerance/support/throughput; "refractor" -> throughput only).
-fn resolve_fab_applicable(def: &crate::config::DesignDef) -> Vec<String> {
-    match &def.fab_applicable {
-        Some(list) => list.clone(),
-        None => match def.kind.as_str() {
-            "reflector" | "catadioptric" => vec![
-                "substrate".to_string(),
-                "tolerance".to_string(),
-                "support".to_string(),
-                "throughput".to_string(),
-            ],
-            "refractor" => vec!["throughput".to_string()],
-            _ => vec![],
-        },
-    }
-}
-
-/// Format the "why not applicable" clause for a subsystem note.
-///
-/// **Follow-up V-2 fix (`session-state.md`):** the previous wording always
-/// formatted `"not applicable ... (kind='{}')"`, blaming `def.kind` even
-/// when the true reason was an explicit `def.fab_applicable` list that
-/// simply omitted the subsystem — false for e.g. a reflector whose list
-/// excludes `substrate` on purpose. This distinguishes the two real causes:
-/// an explicit list that excludes the key, vs. the kind-based default
-/// inference not including it.
-fn fab_applicable_reason(def: &crate::config::DesignDef) -> String {
-    match &def.fab_applicable {
-        Some(_) => "excluded by this design's fab_applicable list".to_string(),
-        None => format!("kind='{}' default does not include it", def.kind),
-    }
-}
-
-/// Compute the fabrication report for an already-computed `SpecSheet`
-/// ([[architecture-v2]] §1's `fabrication::compute` seam).
-///
-/// **Chunk V9 scope:** the real dispatch. For each subsystem
-/// `resolve_fab_applicable` says is applicable, calls the matching Phase-A
-/// subsystem's `compute()` (`substrate_mass`/`throughput`/`tolerance`,
-/// Chunks V4/V6/V7) and records a `notes` entry; subsystems the design
-/// doesn't support get a "not applicable" note (`fab_applicable_reason`,
-/// follow-up V-2 fix — see `session-state.md`). Never panics — an
-/// unrecognized `def.kind` simply resolves to no applicable subsystems,
-/// not an error (graceful-stub pattern, matches v1 Chunk 8).
-///
-/// `substrate_catalog`/`coating_catalog` are only consulted when the
-/// corresponding subsystem is applicable AND the request supplies the
-/// matching name (`req.substrate`/`req.coating`); a missing name is
-/// reported as a note, not an error, and an unknown catalog name
-/// propagates `OptError::UnknownSubstrate`/`UnknownCoating` (main.rs exits
-/// non-zero, no panic).
-pub fn compute(
-    sheet: &crate::output::SpecSheet,
-    req: &crate::request::Request,
-    def: &crate::config::DesignDef,
-    substrate_catalog: &crate::substrate::SubstrateCatalog,
-    coating_catalog: &crate::coating::CoatingCatalog,
-) -> Result<FabricationReport, crate::error::OptError> {
-    let applicable = resolve_fab_applicable(def);
-    let mut notes = Vec::new();
-
-    let substrate = if applicable.iter().any(|s| s == "substrate") {
-        match &req.substrate {
-            Some(name) => {
-                let mat = substrate_catalog.get(name)?;
-                let thickness_ratio = req.thickness_ratio.unwrap_or(6.0);
-                let lightweight_fraction = req.lightweight_fraction.unwrap_or(0.0);
-                Some(substrate_mass::compute(
-                    sheet.aperture_mm,
-                    thickness_ratio,
-                    lightweight_fraction,
-                    mat,
-                ))
-            }
-            None => {
-                notes.push(
-                    "substrate mass: applicable to this design but no 'substrate' name given in the request"
-                        .to_string(),
-                );
-                None
-            }
-        }
-    } else {
-        notes.push(format!(
-            "substrate mass: not applicable to design '{}' ({})",
-            sheet.design_name,
-            fab_applicable_reason(def)
-        ));
-        None
-    };
-
-    let throughput = if applicable.iter().any(|s| s == "throughput") {
-        match &req.coating {
-            Some(name) => {
-                let coat = coating_catalog.get(name)?;
-                let n_mirrors = def.n_mirrors.unwrap_or(0);
-                Some(throughput::compute(coat, n_mirrors))
-            }
-            None => {
-                notes.push(
-                    "throughput: applicable to this design but no 'coating' name given in the request"
-                        .to_string(),
-                );
-                None
-            }
-        }
-    } else {
-        notes.push(format!(
-            "throughput: not applicable to design '{}' ({})",
-            sheet.design_name,
-            fab_applicable_reason(def)
-        ));
-        None
-    };
-
-    let tolerance = if applicable.iter().any(|s| s == "tolerance") {
-        let wavelength_nm = req.wavelength_nm.unwrap_or(550.0);
-        notes.push("tolerance: λ/8 surface figure only — conic tolerance (T1) pending Phase B validation".to_string());
-        Some(tolerance::compute_phase_a(wavelength_nm))
-    } else {
-        notes.push(format!(
-            "tolerance: not applicable to design '{}' ({})",
-            sheet.design_name,
-            fab_applicable_reason(def)
-        ));
-        None
-    };
-
-    Ok(FabricationReport {
-        design_name: sheet.design_name.clone(),
-        substrate,
-        throughput,
-        tolerance,
-        notes,
-    })
 }
 
 #[cfg(test)]

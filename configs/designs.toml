@@ -25,10 +25,15 @@ outputs  = ["basics", "newt_secondary", "illumination", "diffraction", "plate_sc
 # v2 (--fabrication, Chunk V9, architecture-v2.md sec 2a). Newtonian has 2
 # reflective surfaces (primary + secondary/diagonal) -- a mirror-blank
 # substrate, surface-figure tolerance, and reflective throughput all apply.
-# Phase B subsystems (baffle/support) are not yet in fab_applicable since
-# this chunk only wires Phase A (substrate/tolerance/throughput).
+# V-8 (VB4): "support" (mirror mass/sag) applies to any mirror design, so
+# it's added here too. "baffle" is NOT added -- VB1's Cassegrain-cone
+# construction is explicitly scoped to the Cassegrain-family case only
+# ([[v2-baffle-vignetting]] "Newtonian variant" section describes a
+# DIFFERENT, unimplemented tube-wall-clearance calculation); adding
+# "baffle" here would silently produce a wrong Cassegrain-cone result for
+# a Newtonian's actual geometry.
 n_mirrors      = 2
-fab_applicable = ["substrate", "tolerance", "throughput"]
+fab_applicable = ["substrate", "tolerance", "support", "throughput"]
 [designs.newtonian.conic]
 primary = -1.0   # parabola (architecture.md section 2a)
 
@@ -49,9 +54,11 @@ optional   = ["sensor_diag_mm", "eyepiece_fieldstop_mm", "wavelength_nm"]
 outputs    = ["basics", "diffraction", "plate_scale", "fov", "cassegrain"]
 conic_mode = "rc"
 # v2 (--fabrication, Chunk V9). RC has 2 mirrors (primary + secondary) --
-# same Phase A subsystems as Newtonian apply.
+# same Phase A subsystems as Newtonian apply. V-8 (VB4): "baffle" (#3,
+# Cassegrain-cone) and "support" (#6, mirror sag) both apply -- RC is
+# exactly the Cassegrain-family case VB1/VB3 were built for.
 n_mirrors      = 2
-fab_applicable = ["substrate", "tolerance", "throughput"]
+fab_applicable = ["substrate", "tolerance", "baffle", "support", "throughput"]
 
 [designs.cassegrain]
 pipeline   = "cassegrain"
@@ -62,9 +69,10 @@ optional   = ["sensor_diag_mm", "eyepiece_fieldstop_mm", "wavelength_nm"]
 outputs    = ["basics", "diffraction", "plate_scale", "fov", "cassegrain"]
 conic_mode = "classical"
 # v2 (--fabrication, Chunk V9). Classical Cassegrain has 2 mirrors, same
-# Phase A subsystems as RC.
+# Phase A subsystems as RC. V-8 (VB4): "baffle"/"support" apply for the
+# same reason as [designs.rc] above.
 n_mirrors      = 2
-fab_applicable = ["substrate", "tolerance", "throughput"]
+fab_applicable = ["substrate", "tolerance", "baffle", "support", "throughput"]
 
 # Refractors (achromat/triplet/quintuplet) all share pipeline = "refractor"
 # (src/designs/refractor.rs's single N-element solver, architecture.md
