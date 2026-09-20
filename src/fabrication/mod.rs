@@ -25,12 +25,11 @@
 //! graceful-stub precedent (`output.rs`'s `Option` fields before their
 //! pipelines existed).
 //!
-//! **Chunk V4 addition:** `substrate_mass` submodule declared below so the
-//! new `src/fabrication/substrate_mass.rs` (physics for `SubstrateSpec`,
-//! [[v2-substrate-mass]]) is part of the crate tree. This is the minimal
-//! module registration only — calling `substrate_mass::compute` from this
-//! file's `compute()` dispatch match below is Chunk V9's job per
-//! [[task-snapshot-v2-phaseA]]'s chunk table, left untouched here.
+//! **Chunk V9 update:** `compute()` below is now the real dispatch —
+//! `substrate_mass::compute`/`throughput::compute`/`tolerance::compute_phase_a`
+//! are all called and their results populate `FabricationReport`'s
+//! `substrate`/`throughput`/`tolerance` fields. See `compute()`'s own doc
+//! comment for the per-subsystem gating rules.
 pub mod substrate_mass;
 
 /// **Chunk V6 addition:** `throughput` submodule declared below, same
@@ -100,15 +99,16 @@ pub struct ThroughputSpec {
 /// its `fab_applicable`/`kind` supports; skipped ones are recorded in
 /// `notes`, never an error ([[architecture-v2]] §0 "never errors on N/A").
 ///
-/// **Phase A (this chunk, V2):** `substrate` (#1+2) and `throughput` (#8)
-/// fields exist now; real computation lands in V4/V6.
+/// **Phase A (V2/V4/V6/V7/V9):** `substrate` (#1+2), `throughput` (#8), and
+/// `tolerance` (#4, λ/8-only subset, [[v2-tolerance-collimation]]) are all
+/// wired and computed by `compute()` below (Chunk V9,
+/// [[task-snapshot-v2-phaseA]] V9 row).
 ///
 /// **Phase B (later chunks):** `baffle: Option<BaffleSpec>` (#3,
-/// [[v2-baffle-vignetting]]), `tolerance: Option<ToleranceSpec>` (#4,
-/// [[v2-tolerance-collimation]]), `support: Option<SupportSpec>` (#6,
+/// [[v2-baffle-vignetting]]), `support: Option<SupportSpec>` (#6,
 /// [[v2-support-seidel]]) are NOT yet fields on this struct — they land
-/// when their subsystem chunks (V7 tolerance, then the Phase B chunk set)
-/// are built, per [[task-snapshot-v2-phaseA]]/[[task-snapshot-v2-phaseB]].
+/// with their Phase B subsystem chunks, per
+/// [[task-snapshot-v2-phaseA]]/[[task-snapshot-v2-phaseB]].
 ///
 /// **Phase C (BLOCKED, later still):** `collimation: Option<CollimationSpec>`
 /// (#5) and `seidel: Option<SeidelSpec>` (#7) are gated behind
@@ -120,6 +120,10 @@ pub struct FabricationReport {
     pub design_name: String,
     pub substrate: Option<SubstrateSpec>,
     pub throughput: Option<ThroughputSpec>,
+    /// #4 (Phase A, λ/8-only subset), [[v2-tolerance-collimation]]. Added
+    /// Chunk V9 per [[task-snapshot-v2-phaseA]] V7 row ("T1 pending note
+    /// belongs to V9, which owns `FabricationReport.notes`").
+    pub tolerance: Option<crate::fabrication::tolerance::ToleranceSpec>,
     /// "Not applicable to this design" / "not yet computed" / caveat
     /// messages — mirrors `SpecSheet.notes` (`output.rs`).
     pub notes: Vec<String>,
@@ -145,54 +149,113 @@ fn resolve_fab_applicable(def: &crate::config::DesignDef) -> Vec<String> {
     }
 }
 
+/// Format the "why not applicable" clause for a subsystem note.
+///
+/// **Follow-up V-2 fix (`session-state.md`):** the previous wording always
+/// formatted `"not applicable ... (kind='{}')"`, blaming `def.kind` even
+/// when the true reason was an explicit `def.fab_applicable` list that
+/// simply omitted the subsystem — false for e.g. a reflector whose list
+/// excludes `substrate` on purpose. This distinguishes the two real causes:
+/// an explicit list that excludes the key, vs. the kind-based default
+/// inference not including it.
+fn fab_applicable_reason(def: &crate::config::DesignDef) -> String {
+    match &def.fab_applicable {
+        Some(_) => "excluded by this design's fab_applicable list".to_string(),
+        None => format!("kind='{}' default does not include it", def.kind),
+    }
+}
+
 /// Compute the fabrication report for an already-computed `SpecSheet`
 /// ([[architecture-v2]] §1's `fabrication::compute` seam).
 ///
-/// **Chunk V2 scope:** dispatch skeleton only. Checks which subsystems
-/// `def` supports (`resolve_fab_applicable`) and records a `notes` entry
-/// for each of the two subsystems this struct currently models
-/// (`substrate`, `throughput`) — "applicable, not yet computed" if
-/// supported, "not applicable" otherwise. Both fields are always `None`
-/// this chunk; V4/V6 replace these branches with real computation. Never
-/// panics — an unrecognized `def.kind` simply resolves to no applicable
-/// subsystems, not an error (graceful-stub pattern, matches v1 Chunk 8).
+/// **Chunk V9 scope:** the real dispatch. For each subsystem
+/// `resolve_fab_applicable` says is applicable, calls the matching Phase-A
+/// subsystem's `compute()` (`substrate_mass`/`throughput`/`tolerance`,
+/// Chunks V4/V6/V7) and records a `notes` entry; subsystems the design
+/// doesn't support get a "not applicable" note (`fab_applicable_reason`,
+/// follow-up V-2 fix — see `session-state.md`). Never panics — an
+/// unrecognized `def.kind` simply resolves to no applicable subsystems,
+/// not an error (graceful-stub pattern, matches v1 Chunk 8).
 ///
-/// `catalogs` argument intentionally omitted: `SubstrateCatalog`/
-/// `CoatingCatalog` (V3/V5) don't exist yet. Per the brief's own
-/// allowance ("catalogs TBD by V3/V5 signature, use placeholder types or
-/// Option args for now"), V4/V6 will add the parameter when it's needed.
+/// `substrate_catalog`/`coating_catalog` are only consulted when the
+/// corresponding subsystem is applicable AND the request supplies the
+/// matching name (`req.substrate`/`req.coating`); a missing name is
+/// reported as a note, not an error, and an unknown catalog name
+/// propagates `OptError::UnknownSubstrate`/`UnknownCoating` (main.rs exits
+/// non-zero, no panic).
 pub fn compute(
     sheet: &crate::output::SpecSheet,
-    _req: &crate::request::Request,
+    req: &crate::request::Request,
     def: &crate::config::DesignDef,
+    substrate_catalog: &crate::substrate::SubstrateCatalog,
+    coating_catalog: &crate::coating::CoatingCatalog,
 ) -> Result<FabricationReport, crate::error::OptError> {
     let applicable = resolve_fab_applicable(def);
     let mut notes = Vec::new();
 
     let substrate = if applicable.iter().any(|s| s == "substrate") {
-        notes.push(
-            "substrate mass: applicable to this design but not yet computed (pending chunk V4)"
-                .to_string(),
-        );
-        None
+        match &req.substrate {
+            Some(name) => {
+                let mat = substrate_catalog.get(name)?;
+                let thickness_ratio = req.thickness_ratio.unwrap_or(6.0);
+                let lightweight_fraction = req.lightweight_fraction.unwrap_or(0.0);
+                Some(substrate_mass::compute(
+                    sheet.aperture_mm,
+                    thickness_ratio,
+                    lightweight_fraction,
+                    mat,
+                ))
+            }
+            None => {
+                notes.push(
+                    "substrate mass: applicable to this design but no 'substrate' name given in the request"
+                        .to_string(),
+                );
+                None
+            }
+        }
     } else {
         notes.push(format!(
-            "substrate mass: not applicable to design '{}' (kind='{}')",
-            sheet.design_name, def.kind
+            "substrate mass: not applicable to design '{}' ({})",
+            sheet.design_name,
+            fab_applicable_reason(def)
         ));
         None
     };
 
     let throughput = if applicable.iter().any(|s| s == "throughput") {
-        notes.push(
-            "throughput: applicable to this design but not yet computed (pending chunk V6)"
-                .to_string(),
-        );
-        None
+        match &req.coating {
+            Some(name) => {
+                let coat = coating_catalog.get(name)?;
+                let n_mirrors = def.n_mirrors.unwrap_or(0);
+                Some(throughput::compute(coat, n_mirrors))
+            }
+            None => {
+                notes.push(
+                    "throughput: applicable to this design but no 'coating' name given in the request"
+                        .to_string(),
+                );
+                None
+            }
+        }
     } else {
         notes.push(format!(
-            "throughput: not applicable to design '{}' (kind='{}')",
-            sheet.design_name, def.kind
+            "throughput: not applicable to design '{}' ({})",
+            sheet.design_name,
+            fab_applicable_reason(def)
+        ));
+        None
+    };
+
+    let tolerance = if applicable.iter().any(|s| s == "tolerance") {
+        let wavelength_nm = req.wavelength_nm.unwrap_or(550.0);
+        notes.push("tolerance: λ/8 surface figure only — conic tolerance (T1) pending Phase B validation".to_string());
+        Some(tolerance::compute_phase_a(wavelength_nm))
+    } else {
+        notes.push(format!(
+            "tolerance: not applicable to design '{}' ({})",
+            sheet.design_name,
+            fab_applicable_reason(def)
         ));
         None
     };
@@ -201,6 +264,7 @@ pub fn compute(
         design_name: sheet.design_name.clone(),
         substrate,
         throughput,
+        tolerance,
         notes,
     })
 }

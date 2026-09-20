@@ -45,6 +45,23 @@ pub fn render_table(report: &FabricationReport) -> String {
         );
     }
 
+    if let Some(tol) = &report.tolerance {
+        let _ = writeln!(out, "\n-- Fabrication Tolerance (Phase A: surface only) --");
+        let _ = writeln!(out, "Wavelength:      {:.1} nm", tol.wavelength_nm);
+        let _ = writeln!(
+            out,
+            "Surface P-V tol: {:.2} nm (lambda/{:.0})",
+            tol.surface_pv_tol_nm,
+            1.0 / tol.surface_pv_tol_waves
+        );
+        let _ = writeln!(
+            out,
+            "Wavefront P-V tol: {:.2} nm (lambda/{:.0})",
+            tol.wavefront_pv_tol_nm,
+            1.0 / tol.wavefront_pv_tol_waves
+        );
+    }
+
     if !report.notes.is_empty() {
         let _ = writeln!(out, "\n-- Notes --");
         for note in &report.notes {
@@ -62,12 +79,16 @@ pub fn render_table(report: &FabricationReport) -> String {
 /// fields only, no map keys, no cycles), so `serde_json::to_string_pretty`
 /// cannot fail for this shape.
 ///
-/// **Known limitation (inherited from v1):** JSON has no literal for
-/// infinity/NaN. None of today's fields (`thickness_mm`, `mass_kg`,
-/// `reflectivity_pct`, etc.) are constructed as non-finite by their
-/// producing subsystems, so this does not currently bite — but see
-/// `notes/rust-serde-json-infinity-null-roundtrip-break.md` before adding a
-/// future field that could be.
+/// **Known limitation:** JSON has no literal for infinity/NaN, so a
+/// non-finite `f64` field would serialize as `null` and won't deserialize
+/// back — the exact v1 `render::export_json` limitation
+/// ([[rust-serde-json-infinity-null-roundtrip-break]]). None of today's
+/// Phase A fields (`thickness_mm`, `mass_kg`, `reflectivity_pct`,
+/// `surface_pv_tol_nm`, etc.) are constructed as non-finite by their
+/// producing subsystems, so this does not currently bite — resolution of
+/// follow-up V-6 ([[task-snapshot-v2-phaseA]] session-state.md): documented
+/// here rather than code-fixed, since there is no reachable non-finite
+/// input in Phase A to guard against yet.
 pub fn export_json(report: &FabricationReport) -> Result<String, OptError> {
     Ok(serde_json::to_string_pretty(report)
         .expect("FabricationReport is a plain data shape; cannot fail"))
@@ -140,6 +161,7 @@ mod tests {
             design_name: "rc".to_string(),
             substrate: Some(sample_substrate()),
             throughput: Some(sample_throughput()),
+            tolerance: None,
             notes: vec!["tolerance: pending chunk V9".to_string()],
         }
     }

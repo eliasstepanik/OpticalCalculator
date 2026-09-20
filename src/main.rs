@@ -50,8 +50,27 @@ struct Cli {
 
     /// Optional output file; format inferred from extension
     /// (`.json`/`.toml`/plain text — see `render::write_output_file`).
+    /// Applies to the v1 `SpecSheet` only — the fabrication report (below)
+    /// always goes to stdout in this version ([[task-snapshot-v2-phaseA]]
+    /// V9 row).
     #[arg(long)]
     output: Option<PathBuf>,
+
+    /// v2: run the opt-in fabrication/mechanical/optical-quality pass
+    /// after the v1 spec sheet ([[architecture-v2]] §1 decision #1).
+    /// Without this flag, CLI behavior is byte-identical to v1.
+    #[arg(long)]
+    fabrication: bool,
+
+    /// Path to the mirror-blank substrate catalog TOML (v2, only loaded
+    /// when `--fabrication` is set; [[architecture-v2]] §2b).
+    #[arg(long, default_value = "configs/substrates.toml")]
+    substrates: PathBuf,
+
+    /// Path to the mirror coating catalog TOML (v2, only loaded when
+    /// `--fabrication` is set; [[architecture-v2]] §2c).
+    #[arg(long, default_value = "configs/coatings.toml")]
+    coatings: PathBuf,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -88,6 +107,24 @@ fn main() -> anyhow::Result<()> {
     if let Some(output_path) = &cli.output {
         render::write_output_file(&spec_sheet, output_path)
             .with_context(|| format!("writing output file {}", output_path.display()))?;
+    }
+
+    if cli.fabrication {
+        let substrate_catalog = config::load_substrates(&cli.substrates)
+            .with_context(|| format!("loading substrates file {}", cli.substrates.display()))?;
+        let coating_catalog = config::load_coatings(&cli.coatings)
+            .with_context(|| format!("loading coatings file {}", cli.coatings.display()))?;
+
+        let report = fabrication::compute(
+            &spec_sheet,
+            &request,
+            design_def,
+            &substrate_catalog,
+            &coating_catalog,
+        )
+        .context("computing fabrication report")?;
+
+        println!("{}", render_fabrication::render_table(&report));
     }
 
     Ok(())

@@ -22,6 +22,13 @@ kind     = "reflector"
 required = ["aperture_mm", "f_ratio", "focuser_backfocus_mm", "field_diam_mm"]
 optional = ["sensor_diag_mm", "eyepiece_fieldstop_mm", "wavelength_nm"]
 outputs  = ["basics", "newt_secondary", "illumination", "diffraction", "plate_scale", "fov", "conic"]
+# v2 (--fabrication, Chunk V9, architecture-v2.md sec 2a). Newtonian has 2
+# reflective surfaces (primary + secondary/diagonal) -- a mirror-blank
+# substrate, surface-figure tolerance, and reflective throughput all apply.
+# Phase B subsystems (baffle/support) are not yet in fab_applicable since
+# this chunk only wires Phase A (substrate/tolerance/throughput).
+n_mirrors      = 2
+fab_applicable = ["substrate", "tolerance", "throughput"]
 [designs.newtonian.conic]
 primary = -1.0   # parabola (architecture.md section 2a)
 
@@ -41,6 +48,10 @@ required   = ["aperture_mm", "f_ratio", "primary_f_ratio", "backfocus_mm"]
 optional   = ["sensor_diag_mm", "eyepiece_fieldstop_mm", "wavelength_nm"]
 outputs    = ["basics", "diffraction", "plate_scale", "fov", "cassegrain"]
 conic_mode = "rc"
+# v2 (--fabrication, Chunk V9). RC has 2 mirrors (primary + secondary) --
+# same Phase A subsystems as Newtonian apply.
+n_mirrors      = 2
+fab_applicable = ["substrate", "tolerance", "throughput"]
 
 [designs.cassegrain]
 pipeline   = "cassegrain"
@@ -50,6 +61,10 @@ required   = ["aperture_mm", "f_ratio", "primary_f_ratio", "backfocus_mm"]
 optional   = ["sensor_diag_mm", "eyepiece_fieldstop_mm", "wavelength_nm"]
 outputs    = ["basics", "diffraction", "plate_scale", "fov", "cassegrain"]
 conic_mode = "classical"
+# v2 (--fabrication, Chunk V9). Classical Cassegrain has 2 mirrors, same
+# Phase A subsystems as RC.
+n_mirrors      = 2
+fab_applicable = ["substrate", "tolerance", "throughput"]
 
 # Refractors (achromat/triplet/quintuplet) all share pipeline = "refractor"
 # (src/designs/refractor.rs's single N-element solver, architecture.md
@@ -64,6 +79,14 @@ required = ["aperture_mm", "f_ratio"]
 optional = ["sensor_diag_mm", "eyepiece_fieldstop_mm", "wavelength_nm"]
 outputs  = ["basics", "diffraction", "plate_scale", "fov", "prescription"]
 glasses  = ["BK7", "F2"]   # classic crown+flint doublet achromat
+# v2 (--fabrication, Chunk V9). Refractor: 0 reflective surfaces --
+# mirror-blank substrate mass (#1) and surface-figure tolerance (#4) do not
+# apply to lens elements, only throughput (#8, transmission-band exception
+# per architecture-v2.md sec 6, though n_mirrors=0 makes it a 100%/not-applicable
+# note in throughput.rs's own doc comment -- listed here for consistency
+# with the fab_applicable gate, not because it produces a meaningful number).
+n_mirrors      = 0
+fab_applicable = ["throughput"]
 
 [designs.triplet]
 pipeline = "refractor"
@@ -73,6 +96,9 @@ required = ["aperture_mm", "f_ratio"]
 optional = ["sensor_diag_mm", "eyepiece_fieldstop_mm", "wavelength_nm"]
 outputs  = ["basics", "diffraction", "plate_scale", "fov", "prescription"]
 glasses  = ["FPL53", "BK7", "F2"]   # ED-glass apo triplet
+# v2 (--fabrication, Chunk V9). Same refractor rule as achromat above.
+n_mirrors      = 0
+fab_applicable = ["throughput"]
 
 # Quintuplet: 5 elements, 3 physical constraint rows (total power,
 # achromatism, secondary spectrum) -> 2 free DOF. `power_split` is
@@ -93,3 +119,6 @@ required = ["aperture_mm", "f_ratio"]
 optional = ["sensor_diag_mm", "eyepiece_fieldstop_mm", "wavelength_nm"]
 outputs  = ["basics", "diffraction", "plate_scale", "fov", "prescription"]
 glasses  = ["FPL53", "FPL53", "BK7", "F2", "BK7"]
+# v2 (--fabrication, Chunk V9). Same refractor rule as achromat/triplet.
+n_mirrors      = 0
+fab_applicable = ["throughput"]

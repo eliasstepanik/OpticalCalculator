@@ -14,8 +14,10 @@
 use std::collections::HashMap;
 use std::path::Path;
 
+use crate::coating::{Coating, CoatingCatalog};
 use crate::error::OptError;
 use crate::glass::{Glass, GlassCatalog};
+use crate::substrate::{Substrate, SubstrateCatalog};
 
 /// A design's fixed conic override (architecture.md §2a — Newtonian's
 /// primary mirror is always a parabola, `conic.primary = -1.0`).
@@ -99,6 +101,38 @@ struct GlassesFile {
     glasses: HashMap<String, GlassEntry>,
 }
 
+/// One `[substrates.<key>]` table body from `substrates.toml`
+/// ([[architecture-v2]] §2b). The TOML key supplies `Substrate::name`,
+/// mirroring `GlassEntry`'s pattern.
+#[derive(Debug, Clone, serde::Deserialize)]
+struct SubstrateEntry {
+    cte_ppm_per_k: f64,
+    density_g_cm3: f64,
+    cost_tier: u8,
+    max_aperture_mm: f64,
+}
+
+/// Top-level `substrates.toml` container: `[substrates.<key>]` map keyed by
+/// substrate name.
+#[derive(Debug, Clone, serde::Deserialize)]
+struct SubstratesFile {
+    substrates: HashMap<String, SubstrateEntry>,
+}
+
+/// One `[coatings.<key>]` table body from `coatings.toml`
+/// ([[architecture-v2]] §2c). The TOML key supplies `Coating::name`.
+#[derive(Debug, Clone, serde::Deserialize)]
+struct CoatingEntry {
+    reflectivity_pct: f64,
+}
+
+/// Top-level `coatings.toml` container: `[coatings.<key>]` map keyed by
+/// coating name.
+#[derive(Debug, Clone, serde::Deserialize)]
+struct CoatingsFile {
+    coatings: HashMap<String, CoatingEntry>,
+}
+
 /// Read and parse `designs.toml` at `path`.
 ///
 /// Never panics on missing/malformed input: I/O failures map to
@@ -142,6 +176,54 @@ pub fn load_glasses(path: &Path) -> Result<GlassCatalog, OptError> {
     Ok(GlassCatalog::from_glasses(glasses))
 }
 
+/// Read, parse, and convert `substrates.toml` at `path` into a
+/// `SubstrateCatalog` (v2, [[architecture-v2]] §2b). Mirrors
+/// `load_glasses` exactly.
+pub fn load_substrates(path: &Path) -> Result<SubstrateCatalog, OptError> {
+    let raw = std::fs::read_to_string(path).map_err(|source| OptError::Io {
+        path: path.display().to_string(),
+        source,
+    })?;
+    let file: SubstratesFile = toml::from_str(&raw).map_err(|source| OptError::Parse {
+        path: path.display().to_string(),
+        source,
+    })?;
+    let substrates: Vec<Substrate> = file
+        .substrates
+        .into_iter()
+        .map(|(name, e)| Substrate {
+            name,
+            cte_ppm_per_k: e.cte_ppm_per_k,
+            density_g_cm3: e.density_g_cm3,
+            cost_tier: e.cost_tier,
+            max_aperture_mm: e.max_aperture_mm,
+        })
+        .collect();
+    Ok(SubstrateCatalog::from_substrates(substrates))
+}
+
+/// Read, parse, and convert `coatings.toml` at `path` into a
+/// `CoatingCatalog` (v2, [[architecture-v2]] §2c). Mirrors `load_glasses`
+/// exactly.
+pub fn load_coatings(path: &Path) -> Result<CoatingCatalog, OptError> {
+    let raw = std::fs::read_to_string(path).map_err(|source| OptError::Io {
+        path: path.display().to_string(),
+        source,
+    })?;
+    let file: CoatingsFile = toml::from_str(&raw).map_err(|source| OptError::Parse {
+        path: path.display().to_string(),
+        source,
+    })?;
+    let coatings: Vec<Coating> = file
+        .coatings
+        .into_iter()
+        .map(|(name, e)| Coating {
+            name,
+            reflectivity_pct: e.reflectivity_pct,
+        })
+        .collect();
+    Ok(CoatingCatalog::from_coatings(coatings))
+}
 
 #[cfg(test)]
 mod tests;
