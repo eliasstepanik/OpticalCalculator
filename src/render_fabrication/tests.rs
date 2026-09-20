@@ -1,6 +1,8 @@
 //! `#[cfg(test)] mod tests` body for `render_fabrication/mod.rs`.
 
 use super::*;
+use crate::fabrication::collimation::CollimationSpec;
+use crate::fabrication::seidel::SeidelSpec;
 use crate::fabrication::{SubstrateSpec, ThroughputSpec};
 
 /// D=300mm Pyrex, D/6 thickness rule (worked example,
@@ -41,8 +43,59 @@ fn sample_report() -> FabricationReport {
         tolerance: None,
         baffle: None,
         support: None,
+        collimation: None,
+        seidel: None,
         notes: vec!["tolerance: pending chunk V9".to_string()],
     }
+}
+
+/// A2 RC worked example ([[v2-tolerance-collimation]] "Worked numbers").
+fn sample_collimation() -> CollimationSpec {
+    CollimationSpec {
+        coma_per_mm_decenter_waves: 2.257,
+        coma_per_arcsec_tilt_waves: 1.793e-3,
+        allowable_decenter_mm: 0.1107,
+        allowable_tilt_arcsec: 139.4,
+        coma_free_pivot_mm: 163.86,
+        source: "Scaduto et al. 2013 Opt. Express 21:6851 (Wilson RTO I ch.3)".to_string(),
+        notes: vec![],
+    }
+}
+
+/// A2 RC worked example ([[v2-support-seidel]] "Worked self-check", RC row).
+fn sample_seidel() -> SeidelSpec {
+    SeidelSpec {
+        field_of_view_deg: 0.5,
+        coma_s2: 1.5e-11,
+        astigmatism_s3: 3.0591e-4,
+        field_curvature_s4: 2.6442e-4,
+        edge_blur_arcsec: 0.631,
+        conic_mode: Some("aplanatic (coma-nulled)".to_string()),
+        provisional: false,
+        source: "Welford ch.7 §7.2 + ch.8".to_string(),
+    }
+}
+
+#[test]
+fn render_table_contains_collimation_section() {
+    let mut report = sample_report();
+    report.collimation = Some(sample_collimation());
+    let table = render_table(&report);
+    assert!(table.contains("-- Collimation Sensitivity --"), "{table}");
+    assert!(table.contains("2.257 waves/mm"), "{table}");
+    assert!(table.contains("0.111 mm"), "{table}");
+    assert!(table.contains("139.4 arcsec"), "{table}");
+    assert!(table.contains("163.86 mm"), "{table}");
+}
+
+#[test]
+fn render_table_contains_seidel_section() {
+    let mut report = sample_report();
+    report.seidel = Some(sample_seidel());
+    let table = render_table(&report);
+    assert!(table.contains("-- Seidel Aberration Budget --"), "{table}");
+    assert!(table.contains("aplanatic (coma-nulled)"), "{table}");
+    assert!(table.contains("0.63 arcsec"), "{table}");
 }
 
 #[test]

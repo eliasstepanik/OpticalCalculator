@@ -120,6 +120,51 @@ pub fn render_table(report: &FabricationReport) -> String {
         );
     }
 
+    if let Some(collimation) = &report.collimation {
+        let _ = writeln!(out, "\n-- Collimation Sensitivity --");
+        let _ = writeln!(
+            out,
+            "Coma per mm decenter:  {:.3} waves/mm",
+            collimation.coma_per_mm_decenter_waves
+        );
+        let _ = writeln!(
+            out,
+            "Coma per arcsec tilt:  {:.3e} waves/arcsec",
+            collimation.coma_per_arcsec_tilt_waves
+        );
+        let _ = writeln!(
+            out,
+            "Allowable decenter:    {:.3} mm (lambda/4)",
+            collimation.allowable_decenter_mm
+        );
+        let _ = writeln!(
+            out,
+            "Allowable tilt:        {:.1} arcsec (lambda/4)",
+            collimation.allowable_tilt_arcsec
+        );
+        let _ = writeln!(
+            out,
+            "Coma-free pivot:       {:.2} mm behind secondary vertex",
+            collimation.coma_free_pivot_mm
+        );
+    }
+
+    if let Some(seidel) = &report.seidel {
+        let _ = writeln!(out, "\n-- Seidel Aberration Budget --");
+        let _ = writeln!(out, "Field of view:   {:.2} deg", seidel.field_of_view_deg);
+        let _ = writeln!(out, "S_II (coma):     {:.4e} mm", seidel.coma_s2);
+        let _ = writeln!(out, "S_III (astig):   {:.4e} mm", seidel.astigmatism_s3);
+        let _ = writeln!(
+            out,
+            "S_IV (field curv): {:.4e} mm",
+            seidel.field_curvature_s4
+        );
+        let _ = writeln!(out, "Edge blur:       {:.2} arcsec", seidel.edge_blur_arcsec);
+        if let Some(mode) = &seidel.conic_mode {
+            let _ = writeln!(out, "Classification:  {mode}");
+        }
+    }
+
     if !report.notes.is_empty() {
         let _ = writeln!(out, "\n-- Notes --");
         for note in &report.notes {

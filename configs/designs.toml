@@ -57,8 +57,17 @@ conic_mode = "rc"
 # same Phase A subsystems as Newtonian apply. V-8 (VB4): "baffle" (#3,
 # Cassegrain-cone) and "support" (#6, mirror sag) both apply -- RC is
 # exactly the Cassegrain-family case VB1/VB3 were built for.
+# VC3 (Phase C, [[task-snapshot-v2-phaseC]]): "collimation" (#5,
+# secondary decenter/tilt-to-coma sensitivity) and "seidel" (#7,
+# third-order Seidel aberration sums) both need two-mirror-specific
+# Cassegrain geometry (secondary magnification m, R2, K2 for
+# collimation; R1, R2, K1, K2, mirror separation d for seidel) that only
+# `SpecSheet.cassegrain` carries -- Newtonian (single primary, no
+# secondary magnification/conic) and the refractors (no mirrors at all)
+# have neither, so both stay Cassegrain-family-only ([[v2-tolerance-collimation]]
+# #5, [[v2-support-seidel]] #7).
 n_mirrors      = 2
-fab_applicable = ["substrate", "tolerance", "baffle", "support", "throughput"]
+fab_applicable = ["substrate", "tolerance", "baffle", "support", "throughput", "collimation", "seidel"]
 
 [designs.cassegrain]
 pipeline   = "cassegrain"
@@ -70,9 +79,10 @@ outputs    = ["basics", "diffraction", "plate_scale", "fov", "cassegrain"]
 conic_mode = "classical"
 # v2 (--fabrication, Chunk V9). Classical Cassegrain has 2 mirrors, same
 # Phase A subsystems as RC. V-8 (VB4): "baffle"/"support" apply for the
-# same reason as [designs.rc] above.
+# same reason as [designs.rc] above. VC3: "collimation"/"seidel" apply
+# for the same two-mirror-specific reason as [designs.rc] above.
 n_mirrors      = 2
-fab_applicable = ["substrate", "tolerance", "baffle", "support", "throughput"]
+fab_applicable = ["substrate", "tolerance", "baffle", "support", "throughput", "collimation", "seidel"]
 
 # Refractors (achromat/triplet/quintuplet) all share pipeline = "refractor"
 # (src/designs/refractor.rs's single N-element solver, architecture.md

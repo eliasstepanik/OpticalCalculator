@@ -74,27 +74,22 @@ pub mod baffle;
 /// and `FabricationReport.support` carries the result.
 pub mod support;
 
-/// **Chunk VC1 addition:** `src/fabrication/collimation.rs`
+/// **Chunk VC1 addition, wired VC3:** `src/fabrication/collimation.rs`
 /// (two-mirror decenter/tilt-to-coma physics for `CollimationSpec`,
-/// [[v2-tolerance-collimation]] C1 VERIFIED). Same
-/// "registration only, dispatch deferred" pattern as Chunks
-/// V4/V6/V7/VB1/VB3 above: `collimation::compute` is NOT yet called from
-/// `dispatch.rs`'s `compute()` match, and `FabricationReport` does not
-/// yet carry a `collimation` field — both are left for a later
-/// integration chunk (this chunk's brief restricts edits to
-/// `collimation.rs` only).
+/// [[v2-tolerance-collimation]] C1 VERIFIED). `collimation::compute` is
+/// now called from `dispatch.rs`'s `compute()` when `"collimation"` is in
+/// a Cassegrain-family design's `fab_applicable` list, and
+/// `FabricationReport.collimation` carries the result.
 pub mod collimation;
 
-/// **Chunk VC2 addition:** `src/fabrication/seidel.rs` (+ sibling
-/// `seidel/seidel_trace.rs` for the paraxial trace machinery,
+/// **Chunk VC2 addition, wired VC3:** `src/fabrication/seidel.rs` (+
+/// sibling `seidel/seidel_trace.rs` for the paraxial trace machinery,
 /// `seidel/tests.rs` for its tests) — two-mirror third-order Seidel
 /// aberration sums for `SeidelSpec`, [[v2-support-seidel]] S2 VERIFIED.
-/// Same "registration only, dispatch deferred" pattern as Chunk VC1's
-/// `collimation` line above: `seidel::compute` is NOT yet called from
-/// `dispatch.rs`'s `compute()` match, and `FabricationReport` does not
-/// yet carry a `seidel` field — both left for a later integration chunk
-/// (this chunk's brief restricts edits to `seidel.rs` + its sibling split
-/// files only).
+/// `seidel::compute` is now called from `dispatch.rs`'s `compute()` when
+/// `"seidel"` is in a Cassegrain-family design's `fab_applicable` list
+/// AND `req.field_diam_mm` is present, and `FabricationReport.seidel`
+/// carries the result.
 pub mod seidel;
 
 /// V-8 addition: the `compute()` dispatch free-function + its helper
@@ -164,11 +159,12 @@ pub struct ThroughputSpec {
 /// via `tolerance::compute_phase_b_conic`) are now computed by `compute()`
 /// (`dispatch.rs`) per [[task-snapshot-v2-phaseB]]'s VB4 row.
 ///
-/// **Phase C (BLOCKED, later still):** `collimation: Option<CollimationSpec>`
-/// (#5) and `seidel: Option<SeidelSpec>` (#7) are gated behind
-/// [[formula-validation-v2]] items C1/S2 ([[architecture-v2]] R1/R2, both
-/// HIGH risk) — literature-verified worked examples must exist before
-/// either field or its computing module is built.
+/// **Phase C, wired VC3:** `collimation: Option<CollimationSpec>` (#5,
+/// [[v2-tolerance-collimation]] C1 VERIFIED) and `seidel:
+/// Option<SeidelSpec>` (#7, [[v2-support-seidel]] S2 VERIFIED) are now
+/// computed by `compute()` (`dispatch.rs`) for Cassegrain-family designs
+/// per [[task-snapshot-v2-phaseC]]'s VC3 row — the final chunk of the
+/// 19-chunk v2 plan.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct FabricationReport {
     pub design_name: String,
@@ -189,6 +185,15 @@ pub struct FabricationReport {
     /// design (Newtonian and Cassegrain-family alike; a lens has no
     /// support-sag concept).
     pub support: Option<crate::fabrication::support::SupportSpec>,
+    /// #5, [[v2-tolerance-collimation]] (C1 VERIFIED). VC3 addition —
+    /// Cassegrain-family designs only (`SpecSheet.cassegrain` present);
+    /// `None` for Newtonian/refractor designs (single-mirror or no
+    /// mirror at all — no secondary decenter/tilt to budget).
+    pub collimation: Option<crate::fabrication::collimation::CollimationSpec>,
+    /// #7, [[v2-support-seidel]] (S2 VERIFIED). VC3 addition —
+    /// Cassegrain-family designs only, and requires `req.field_diam_mm`
+    /// (the Seidel sums need an off-axis field angle to evaluate at).
+    pub seidel: Option<crate::fabrication::seidel::SeidelSpec>,
     /// "Not applicable to this design" / "not yet computed" / caveat
     /// messages — mirrors `SpecSheet.notes` (`output.rs`).
     pub notes: Vec<String>,

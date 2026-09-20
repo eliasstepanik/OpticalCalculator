@@ -6,6 +6,19 @@
 //! surface-tolerance wiring (Chunk V9). `pub use dispatch::compute;` in
 //! `mod.rs` re-exports this file's `compute` as `fabrication::compute`,
 //! so callers (`main.rs`) see no path change.
+//!
+//! **Chunk VC3 (this chunk):** promoted to a directory module
+//! (`dispatch/mod.rs` + `dispatch/phase_c.rs`) — adding Phase C's
+//! `collimation`/`seidel` dispatch (#5/#7,
+//! [[task-snapshot-v2-phaseC]] VC3) on top of the existing
+//! substrate/throughput/tolerance/baffle/support blocks would have
+//! pushed this single file past the 300-line limit; the two new
+//! subsystem blocks live in `phase_c.rs` as sibling helper functions
+//! called from this file's `compute()`, same sibling-file split
+//! precedent as `fabrication/tolerance/`, `fabrication/support/`,
+//! `fabrication/seidel/`.
+
+mod phase_c;
 
 use crate::fabrication::{
     baffle, substrate_mass, support, throughput, tolerance, FabricationReport,
@@ -265,6 +278,9 @@ pub fn compute(
         None
     };
 
+    let collimation = phase_c::dispatch_collimation(&applicable, sheet, req, def, &mut notes);
+    let seidel = phase_c::dispatch_seidel(&applicable, sheet, req, def, &mut notes);
+
     Ok(FabricationReport {
         design_name: sheet.design_name.clone(),
         substrate,
@@ -272,6 +288,8 @@ pub fn compute(
         tolerance,
         baffle,
         support,
+        collimation,
+        seidel,
         notes,
     })
 }
