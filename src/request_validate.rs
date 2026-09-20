@@ -47,6 +47,30 @@ pub(crate) fn validate_values(req: &Request) -> Result<(), OptError> {
             });
         }
     }
+    // v2 (`--fabrication`, Phase A, #1). `lightweight_fraction` is a pocket
+    // volume fraction removed from a solid blank. KB architecture-v2.md
+    // §2d + v2-substrate-mass.md both pin the bound at [0.0, 0.8] (not
+    // 1.0 — a fully-hollowed 100% pocket-fraction blank is not physical).
+    // Only checked when present, matching every other v2-guarded field.
+    if let Some(v) = req.lightweight_fraction {
+        if !v.is_finite() || !(0.0..=0.8).contains(&v) {
+            return Err(OptError::InvalidValue {
+                field: "lightweight_fraction".to_string(),
+                reason: format!("must be finite and in [0.0, 0.8], got {v}"),
+            });
+        }
+    }
+    // v2 (`--fabrication`, Phase A, #1). `thickness_ratio` overrides the
+    // default D/6 ATM rule — see KB doc v2-substrate-mass.md sanity bound
+    // "4.0 <= thickness_ratio <= 12.0".
+    if let Some(v) = req.thickness_ratio {
+        if !v.is_finite() || !(4.0..=12.0).contains(&v) {
+            return Err(OptError::InvalidValue {
+                field: "thickness_ratio".to_string(),
+                reason: format!("must be finite and in [4.0, 12.0], got {v}"),
+            });
+        }
+    }
     Ok(())
 }
 
@@ -93,6 +117,10 @@ mod tests {
             sensor_diag_mm: None,
             wavelength_nm: None,
             output_path: None,
+            substrate: None,
+            lightweight_fraction: None,
+            coating: None,
+            thickness_ratio: None,
         }
     }
 
@@ -155,6 +183,70 @@ mod tests {
         // field_diam_mm/sensor_diag_mm.
         let mut req = valid_request();
         req.eyepiece_fieldstop_mm = Some(0.0);
+        assert!(validate_values(&req).is_ok());
+    }
+
+    // v2 Chunk V1 acceptance check (3): `lightweight_fraction` range
+    // validation rejects negative/>0.8/NaN and accepts valid values,
+    // via the existing `validate_values()` pattern.
+
+    #[test]
+    fn negative_lightweight_fraction_is_invalid_value() {
+        let mut req = valid_request();
+        req.lightweight_fraction = Some(-0.1);
+        let err = validate_values(&req).expect_err("must reject negative lightweight_fraction");
+        match err {
+            OptError::InvalidValue { field, .. } => assert_eq!(field, "lightweight_fraction"),
+            other => panic!("expected InvalidValue, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn over_point_eight_lightweight_fraction_is_invalid_value() {
+        let mut req = valid_request();
+        req.lightweight_fraction = Some(0.81);
+        let err = validate_values(&req).expect_err("must reject lightweight_fraction > 0.8");
+        match err {
+            OptError::InvalidValue { field, .. } => assert_eq!(field, "lightweight_fraction"),
+            other => panic!("expected InvalidValue, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn nan_lightweight_fraction_is_invalid_value_not_panic() {
+        let mut req = valid_request();
+        req.lightweight_fraction = Some(f64::NAN);
+        let err = validate_values(&req).expect_err("must reject NaN lightweight_fraction");
+        match err {
+            OptError::InvalidValue { field, .. } => assert_eq!(field, "lightweight_fraction"),
+            other => panic!("expected InvalidValue, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn valid_lightweight_fraction_values_pass() {
+        let mut req = valid_request();
+        for v in [0.0, 0.3, 0.8] {
+            req.lightweight_fraction = Some(v);
+            assert!(validate_values(&req).is_ok(), "expected {v} to be valid");
+        }
+    }
+
+    #[test]
+    fn thickness_ratio_out_of_range_is_invalid_value() {
+        let mut req = valid_request();
+        req.thickness_ratio = Some(2.0);
+        let err = validate_values(&req).expect_err("must reject thickness_ratio below 4.0");
+        match err {
+            OptError::InvalidValue { field, .. } => assert_eq!(field, "thickness_ratio"),
+            other => panic!("expected InvalidValue, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn valid_thickness_ratio_passes() {
+        let mut req = valid_request();
+        req.thickness_ratio = Some(6.0);
         assert!(validate_values(&req).is_ok());
     }
 }

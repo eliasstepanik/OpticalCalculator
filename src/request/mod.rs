@@ -11,6 +11,16 @@
 //! and `backfocus_mm`, required by the rc/cassegrain pipeline. Architecture
 //! §2a/§2c never listed them; `designs.toml`'s `rc`/`cassegrain` entries add
 //! them to `required` (Chunk 15) and this struct must accept them (here).
+//!
+//! v2 Chunk V1: split `src/request.rs` into `src/request/mod.rs` (this
+//! file, all non-test code, unchanged) + `src/request/tests.rs` (the
+//! `#[cfg(test)] mod tests` body, moved verbatim) to stay under the
+//! 300-line limit after adding the 4 v2 `Option` fields (`substrate`,
+//! `lightweight_fraction`, `coating`, `thickness_ratio`) — same
+//! sibling-file split precedent as `config.rs`'s split this same chunk and
+//! `refractor_chromatic.rs`/`refractor_chromatic_solve.rs`. `main.rs`'s
+//! `mod request;` declaration is unaffected: Rust resolves it to
+//! `request/mod.rs` automatically.
 
 use crate::config::DesignDef;
 use crate::error::OptError;
@@ -85,6 +95,33 @@ pub struct Request {
     /// Chunk 17's CLI layer. Not read by any pipeline module.
     #[serde(default)]
     pub output_path: Option<String>,
+
+    /// v2 (`--fabrication`, Phase A, #1/#2). Mirror-blank substrate name,
+    /// a key into the NEW `substrates.toml` catalog (e.g. `"pyrex"`,
+    /// `"zerodur"`) — distinct from `DesignDef.glasses`' optical LENS
+    /// glass names. Only consulted when `--fabrication` is set and
+    /// `"substrate"` is in the design's `fab_applicable` list.
+    #[serde(default)]
+    pub substrate: Option<String>,
+
+    /// v2 (`--fabrication`, Phase A, #1). Pocket-removal fraction for a
+    /// lightweighted mirror blank, in `[0.0, 0.8]`. `0.0` (default when
+    /// unset) means a solid disk blank.
+    #[serde(default)]
+    pub lightweight_fraction: Option<f64>,
+
+    /// v2 (`--fabrication`, Phase A, #8). Coating name, a key into the
+    /// NEW `coatings.toml` catalog (e.g. `"enhanced_aluminum"`,
+    /// `"protected_silver"`). Only consulted when `"throughput"` is in
+    /// the design's `fab_applicable` list.
+    #[serde(default)]
+    pub coating: Option<String>,
+
+    /// v2 (`--fabrication`, Phase A, #1). Optional override of the
+    /// default D/6 (or D/6-D/8) ATM thickness-ratio rule used by
+    /// `fabrication::substrate_mass`. Sanity range `[4.0, 12.0]`.
+    #[serde(default)]
+    pub thickness_ratio: Option<f64>,
 }
 
 impl Request {
@@ -126,154 +163,14 @@ impl Request {
             "sensor_diag_mm" => self.sensor_diag_mm.is_some(),
             "wavelength_nm" => self.wavelength_nm.is_some(),
             "output_path" => self.output_path.is_some(),
+            "substrate" => self.substrate.is_some(),
+            "lightweight_fraction" => self.lightweight_fraction.is_some(),
+            "coating" => self.coating.is_some(),
+            "thickness_ratio" => self.thickness_ratio.is_some(),
             _ => false,
         }
     }
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// Minimal inline `DesignDef` matching a Newtonian's required list
-    /// (architecture.md §2a / config.rs's inline test schema) — no TOML
-    /// parse needed here, just the struct `Request::validate` consumes.
-    fn newtonian_def() -> DesignDef {
-        toml::from_str(
-            r#"
-                pipeline = "newtonian"
-                elements = 2
-                kind = "reflector"
-                required = ["aperture_mm", "f_ratio", "focuser_backfocus_mm", "field_diam_mm"]
-                optional = ["sensor_diag_mm", "eyepiece_fieldstop_mm"]
-                outputs = ["basics"]
-            "#,
-        )
-        .expect("valid inline DesignDef")
-    }
-
-    /// Minimal inline `DesignDef` matching formula-validation.md F2's
-    /// rc/cassegrain resolution — required list includes the two new fields.
-    fn rc_def() -> DesignDef {
-        toml::from_str(
-            r#"
-                pipeline = "cassegrain"
-                elements = 2
-                kind = "reflector"
-                required = ["aperture_mm", "f_ratio", "primary_f_ratio", "backfocus_mm"]
-                outputs = ["basics"]
-            "#,
-        )
-        .expect("valid inline DesignDef")
-    }
-
-    fn newtonian_request(focuser_backfocus_mm: Option<f64>, field_diam_mm: Option<f64>) -> Request {
-        Request {
-            design: "newtonian".to_string(),
-            aperture_mm: 200.0,
-            f_ratio: 6.0,
-            focuser_backfocus_mm,
-            field_diam_mm,
-            primary_f_ratio: None,
-            backfocus_mm: None,
-            eyepiece_fieldstop_mm: None,
-            sensor_diag_mm: None,
-            wavelength_nm: None,
-            output_path: None,
-        }
-    }
-
-    #[test]
-    fn validate_ok_when_all_required_fields_present() {
-        let req = newtonian_request(Some(220.0), Some(20.0));
-        assert!(req.validate(&newtonian_def()).is_ok());
-    }
-
-    #[test]
-    fn validate_errs_on_first_missing_required_field() {
-        // field_diam_mm missing -> MissingField naming it, not focuser_backfocus_mm
-        let req = newtonian_request(Some(220.0), None);
-        let err = req.validate(&newtonian_def()).expect_err("must fail");
-        match err {
-            OptError::MissingField { design, field } => {
-                assert_eq!(design, "newtonian");
-                assert_eq!(field, "field_diam_mm");
-            }
-            other => panic!("expected MissingField, got {other:?}"),
-        }
-    }
-
-    #[test]
-    fn validate_errs_when_backfocus_missing_for_newtonian() {
-        let req = newtonian_request(None, Some(20.0));
-        let err = req.validate(&newtonian_def()).expect_err("must fail");
-        match err {
-            OptError::MissingField { field, .. } => assert_eq!(field, "focuser_backfocus_mm"),
-            other => panic!("expected MissingField, got {other:?}"),
-        }
-    }
-
-    #[test]
-    fn rc_request_with_f2_fields_validates_ok() {
-        // Confirms primary_f_ratio/backfocus_mm exist and satisfy an
-        // RC-style DesignDef's required list (formula-validation.md F2).
-        let req = Request {
-            design: "rc".to_string(),
-            aperture_mm: 200.0,
-            f_ratio: 8.0,
-            focuser_backfocus_mm: None,
-            field_diam_mm: None,
-            primary_f_ratio: Some(3.0),
-            backfocus_mm: Some(150.0),
-            eyepiece_fieldstop_mm: None,
-            sensor_diag_mm: None,
-            wavelength_nm: None,
-            output_path: None,
-        };
-        assert!(req.validate(&rc_def()).is_ok());
-    }
-
-    #[test]
-    fn rc_request_missing_backfocus_errs_naming_it() {
-        let req = Request {
-            design: "rc".to_string(),
-            aperture_mm: 200.0,
-            f_ratio: 8.0,
-            focuser_backfocus_mm: None,
-            field_diam_mm: None,
-            primary_f_ratio: Some(3.0),
-            backfocus_mm: None,
-            eyepiece_fieldstop_mm: None,
-            sensor_diag_mm: None,
-            wavelength_nm: None,
-            output_path: None,
-        };
-        let err = req.validate(&rc_def()).expect_err("must fail");
-        match err {
-            OptError::MissingField { design, field } => {
-                assert_eq!(design, "rc");
-                assert_eq!(field, "backfocus_mm");
-            }
-            other => panic!("expected MissingField, got {other:?}"),
-        }
-    }
-
-    #[test]
-    fn unknown_required_field_name_counts_as_missing() {
-        // A designs.toml typo/unknown field must fail validation, not be
-        // silently ignored.
-        let def: DesignDef = toml::from_str(
-            r#"
-                pipeline = "newtonian"
-                elements = 2
-                kind = "reflector"
-                required = ["totally_unknown_field"]
-                outputs = ["basics"]
-            "#,
-        )
-        .expect("valid inline DesignDef");
-        let req = newtonian_request(Some(220.0), Some(20.0));
-        let err = req.validate(&def).expect_err("must fail on unknown field");
-        assert!(matches!(err, OptError::MissingField { field, .. } if field == "totally_unknown_field"));
-    }
-}
+mod tests;
