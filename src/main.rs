@@ -19,6 +19,7 @@ mod output;
 mod refractor_chromatic;
 mod refractor_chromatic_solve;
 mod render;
+mod render_fabrication;
 mod request;
 mod request_validate;
 mod substrate;
