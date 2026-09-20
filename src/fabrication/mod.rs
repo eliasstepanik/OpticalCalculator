@@ -41,6 +41,16 @@ pub mod substrate_mass;
 /// is still Chunk V9's job, left untouched here.
 pub mod throughput;
 
+/// **Chunk V7 addition:** `tolerance` submodule declared below, same
+/// minimal-registration-only pattern as Chunk V4's `substrate_mass` and
+/// Chunk V6's `throughput` lines above — `src/fabrication/tolerance.rs`
+/// (Phase-A λ/8-only physics for `ToleranceSpec`,
+/// [[v2-tolerance-collimation]]) is now part of the crate tree. Calling
+/// `tolerance::compute_phase_a` from this file's `compute()` dispatch
+/// match, and adding a `tolerance` field to `FabricationReport`, are still
+/// Chunk V9's job, left untouched here.
+pub mod tolerance;
+
 /// Mirror-blank substrate mass/thickness result (#1+#2,
 /// [[v2-substrate-mass]] `### SubstrateSpec`). Populated by
 /// `fabrication::substrate_mass` (Chunk V4) — this chunk only defines the
