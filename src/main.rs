@@ -12,6 +12,7 @@ mod designs;
 #[cfg(test)]
 mod examples_validate;
 mod error;
+mod fabrication;
 mod glass;
 mod output;
 mod refractor_chromatic;
